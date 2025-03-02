@@ -1,0 +1,40 @@
+version: "3.9"
+
+services:
+  auth_db:
+    container_name: auth_db
+    image: postgres:14.3-alpine
+    env_file: .env
+    environment:
+      POSTGRES_PASSWORD: ${AUTH_DB_PASSWORD}
+      POSTGRES_USER: ${AUTH_DB_USER}
+      POSTGRES_DB: ${AUTH_DB_NAME}
+    ports:
+      - ${AUTH_DB_PORT_HOST}:${AUTH_DB_PORT_CONTAINER}
+    volumes:
+      - auth_db_data:/var/lib/postgresql/data
+    restart: unless-stopped
+    command:
+      - -p ${AUTH_DB_PORT_CONTAINER}
+    networks:
+      - network
+
+  auth_service:
+    container_name: auth_service
+    build:
+      context: .
+      dockerfile: services/auth_service/Dockerfile
+    env_file:
+      - .env
+    ports:
+      - 8000:8000
+#      - ${AUTH_SERVICE_PORT_HOST}:${AUTH_SERVICE_PORT_CONTAINER}
+    networks:
+      - network
+
+volumes:
+  auth_db_data:
+
+networks:
+  network:
+    name: microservices_network

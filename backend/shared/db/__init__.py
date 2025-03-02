@@ -12,6 +12,8 @@ from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine, AsyncSessio
     async_scoped_session
 import re
 
+from sqlalchemy.orm import declarative_base
+
 
 def serialize_json(obj):
     if isinstance(obj, datetime.datetime):
@@ -52,6 +54,22 @@ class DataBaseSession:
             )
         return self.__session
 
+    async def commit(self) -> None:
+        if self.__session:
+            await self.__session.commit()
+
+    async def close(self) -> None:
+        if self.__session:
+            await self.__session.close()
+
+    async def rollback(self) -> None:
+        if self.__session:
+            await self.__session.rollback()
+
+    async def run_sync(self, func: tp.Callable, *args, **kwargs) -> tp.Any:
+        async with (await self.engine).begin() as conn:
+            await conn.run_sync(func, *args, **kwargs)
+
     async def query(self, query: tp.Union[str, TextClause], params=None):
         if isinstance(query, str):
             query = text(query)
@@ -69,8 +87,8 @@ class Database:
         self.__sessions: dict[str, tp.Optional[DataBaseSession]] = {}
         self.__engines_params = {}
         for engine_params in engines_params:
-            engine_params.pop("name")
-            self.__engines_params[engine_params["name"]] = engine_params
+            name = engine_params.pop("name")
+            self.__engines_params[name] = engine_params
 
     @property
     async def sessions(self) -> dict[str, tp.Optional[DataBaseSession]]:
@@ -80,6 +98,20 @@ class Database:
                     db_params=engine_params
                 )
         return self.__sessions
+
+    async def run_sync_batch(self, func: tp.Callable, *args, **kwargs):
+        for db_name, session in (await self.sessions).items():
+            await session.run_sync(func, *args, **kwargs)
+
+    async def run_sync(self,db_name: str, func: tp.Callable, *args, **kwargs):
+        current_session = (await self.sessions)[db_name]
+        await current_session.run_sync(func, *args, **kwargs)
+
+    async def get_engines(self) -> dict[str, AsyncEngine]:
+        mapping = {}
+        for db_name, session in (await self.sessions).items():
+            mapping[db_name] = await session.engine
+        return mapping
 
     async def get_scoped_session(self, db_name: str) -> DataBaseSession:
         return (await self.sessions)[db_name]
@@ -401,3 +433,18 @@ class Database:
             'returning_value': primary_key_value,
             'returning': response
         }
+
+
+async def get_db(engines_params: list[dict[str, tp.Union[int, str, bool]]]):
+    db = Database(engines_params)
+    try:
+        yield db
+        for db_name, session in (await db.sessions).items():
+            await session.commit()
+    except Exception as e:
+        for db_name, session in (await db.sessions).items():
+            await session.rollback()
+        raise e
+    finally:
+        for db_name, session in (await db.sessions).items():
+            await session.close()
