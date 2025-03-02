@@ -45,6 +45,9 @@ services:
       dockerfile: services/auth_service/Dockerfile
     env_file:
       - .env
+    environment:
+      - AUTH_DB_HOST=${AUTH_DB_NAME}
+      - RABBIT_HOST=rabbitmq
     ports:
       - ${AUTH_SERVICE_PORT_HOST}:${AUTH_SERVICE_PORT_CONTAINER}
     depends_on:

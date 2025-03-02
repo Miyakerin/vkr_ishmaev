@@ -1,4 +1,4 @@
-from shared.db import Database
+from shared.db.sql_database import Database
 from ..db_models import MyBase
 from ..settings import settings
 
