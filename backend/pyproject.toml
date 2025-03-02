@@ -16,11 +16,15 @@ dependencies = [
     "uvicorn[async] (>=0.34.0,<0.35.0)",
     "dotenv (>=0.9.9,<0.10.0)",
     "pydantic-settings (>=2.8.1,<3.0.0)",
-    "aiohttp (>=3.11.13,<4.0.0)"
+    "aiohttp (>=3.11.13,<4.0.0)",
+    "aio-pika (==9.5.5)"
 ]
 
 [tool.poetry]
 package-mode = false
+
+[tool.poetry.dependencies]
+python = "^3.12"
 
 [tool.poetry.group.dev.dependencies]
 black = "^25.1.0"
