@@ -1,4 +1,5 @@
 from shared.db import Database
+from ..db_models import MyBase
 from ..settings import settings
 
 
@@ -14,3 +15,4 @@ async def init():
     ]
 
     db = Database(engines_params=db_settings)
+    await db.run_sync_batch(MyBase.metadata.create_all)

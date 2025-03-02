@@ -29,6 +29,8 @@ services:
     ports:
       - 8000:8000
 #      - ${AUTH_SERVICE_PORT_HOST}:${AUTH_SERVICE_PORT_CONTAINER}
+    depends_on:
+      - auth_db
     networks:
       - network
 

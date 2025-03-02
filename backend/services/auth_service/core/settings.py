@@ -23,7 +23,6 @@ class DBSettings(BaseSettings):
     def set_uri(self) -> tp.Self:
         if self.url is None:
             self.url = f"{self.driver}://{self.user}:{self.password}@{self.name}:{self.port_container}/{self.name}"
-            print(self.url)
         return self
 
 
