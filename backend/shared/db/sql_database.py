@@ -57,16 +57,13 @@ class DataBaseSession:
         return await (await self.session).execute(*args, **kwargs)
 
     async def commit(self) -> None:
-        if self.__session:
-            await self.__session.commit()
+        await (await self.session).commit()
 
     async def close(self) -> None:
-        if self.__session:
-            await self.__session.close()
+        await (await self.session).close()
 
     async def rollback(self) -> None:
-        if self.__session:
-            await self.__session.rollback()
+        await (await self.session).rollback()
 
     async def run_sync(self, func: tp.Callable, *args, **kwargs) -> tp.Any:
         async with (await self.engine).begin() as conn:
@@ -447,19 +444,22 @@ class DbDependency:
             yield self.db
             to_commit = []
             for db_name, session in (await self.db.sessions).items():
-                to_commit.append(session.commit())
-            if to_commit:
-                await asyncio.gather(*to_commit)
+                await session.commit()
+            #     to_commit.append(session.commit())
+            # if to_commit:
+            #     await asyncio.gather(*to_commit)
         except Exception as e:
             to_rollback = []
             for db_name, session in (await self.db.sessions).items():
-                to_rollback.append(session.rollback())
-            if to_rollback:
-                await asyncio.gather(*to_rollback)
+                await session.rollback()
+            #     to_rollback.append(session.rollback())
+            # if to_rollback:
+            #     await asyncio.gather(*to_rollback)
             raise e
         finally:
             to_close = []
             for db_name, session in (await self.db.sessions).items():
-                to_close.append(session.close())
-            if to_close:
-                await asyncio.gather(*to_close)
+                await session.close()
+            #     to_close.append(session.close())
+            # if to_close:
+            #     await asyncio.gather(*to_close)

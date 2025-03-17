@@ -11,8 +11,6 @@ from shared.db.sql_database import Database
 from shared.exceptions.exceptions import CustomException
 
 
-
-
 class UserService(BaseService):
     def __init__(self, db:Database=None, current_user=None):
         super(UserService, self).__init__(db=db, current_user=current_user)
@@ -64,3 +62,29 @@ class UserService(BaseService):
         result = await (await self.db.sessions)[settings.auth_db_settings.name].execute(stmt)
         result = [x["User"] for x in result.mappings().all()]
         return result
+
+    async def login_user(self, username: str, password: str, email: str) -> User:
+        if username:
+            stmt = (
+                select(User)
+                .where(
+                    (sqlalchemy.func.lower(User.username) == username.lower())
+                )
+            )
+        elif email:
+            stmt = (
+                select(User)
+                .where(
+                    sqlalchemy.func.lower(User.email) == email.lower()
+                )
+            )
+        else:
+            raise CustomException(status_code=400, detail="Invalid credentials")
+        result = await (await self.db.sessions)[settings.auth_db_settings.name].execute(stmt)
+        result = result.mappings().one_or_none()
+        if not result:
+            raise CustomException(status_code=404, detail="User does not exist")
+        result = result["User"]
+        if bcrypt.checkpw(password.encode("UTF-8"), result.password.encode("UTF-8")):
+            return result
+        raise CustomException(status_code=401, detail="Invalid credentials")
