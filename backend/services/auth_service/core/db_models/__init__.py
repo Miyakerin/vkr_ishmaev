@@ -36,5 +36,5 @@ class User(MyBase):
     username: Mapped[Annotated[str, 64]] = mapped_column("username", String(64), nullable=False)
     email: Mapped[EmailStr] = mapped_column("email", String(64), nullable=False)
     password: Mapped[Annotated[str, 256]] = mapped_column("password", String(256), nullable=False)
-    create_timestamp: Mapped[datetime] = mapped_column("create_timestamp", DateTime(timezone=False), nullable=False)
-    delete_timestamp: Mapped[datetime] = mapped_column("delete_timestamp", DateTime(timezone=False), nullable=False)
+    create_timestamp: Mapped[datetime] = mapped_column("create_timestamp", DateTime(timezone=False), nullable=False, default=datetime.now())
+    delete_timestamp: Mapped[datetime] = mapped_column("delete_timestamp", DateTime(timezone=False), nullable=True, default=None)

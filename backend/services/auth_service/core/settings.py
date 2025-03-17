@@ -64,6 +64,15 @@ class Settings(BaseSettings):
     auth_db_settings: DBSettings = DBSettings()
     service_settings: ServiceSettings = ServiceSettings()
     jwt_settings: JwtSettings = JwtSettings()
+    all_db: tp.List[tp.Dict[str, tp.Union[str, int, bool]]] = [
+        {
+            "name": auth_db_settings.name,
+            "url": auth_db_settings.url,
+            "echo": auth_db_settings.echo,
+            "pool_size": auth_db_settings.pool_size,
+            "max_overflow": auth_db_settings.max_overflow
+        }
+    ]
 
 
 settings = Settings()

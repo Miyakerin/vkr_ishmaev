@@ -1,16 +1,17 @@
 import datetime
 
-from authlib.jose import JsonWebKey, RSAKey, jwt
+from authlib.jose import RSAKey, jwt
 
 from services.auth_service.core.services import BaseService
 from services.auth_service.core.settings import JwtSettings
+from shared.db.sql_database import Database
 
 
 class JWTService(BaseService):
     exp_timedelta = datetime.timedelta(days=30)
 
-    def __init__(self,jwt_settings, session=None, current_user=None):
-        super(JWTService, self).__init__(session=session, current_user=current_user)
+    def __init__(self,jwt_settings, db:Database=None, current_user=None):
+        super(JWTService, self).__init__(db=db, current_user=current_user)
         self.__jwt_settings: JwtSettings = jwt_settings
 
     @property

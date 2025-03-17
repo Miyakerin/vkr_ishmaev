@@ -6,6 +6,7 @@ import uuid
 from asyncio import current_task
 from itertools import chain
 
+import asyncio
 import sqlalchemy as sa
 from sqlalchemy import text, TextClause
 from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine, AsyncSession, async_sessionmaker, \
@@ -51,6 +52,9 @@ class DataBaseSession:
                 scopefunc=current_task
             )
         return self.__session
+
+    async def execute(self, *args, **kwargs) -> tp.Any:
+        return await (await self.session).execute(*args, **kwargs)
 
     async def commit(self) -> None:
         if self.__session:
@@ -433,16 +437,29 @@ class Database:
         }
 
 
-async def get_db(engines_params: list[dict[str, tp.Union[int, str, bool]]]):
-    db = Database(engines_params)
-    try:
-        yield db
-        for db_name, session in (await db.sessions).items():
-            await session.commit()
-    except Exception as e:
-        for db_name, session in (await db.sessions).items():
-            await session.rollback()
-        raise e
-    finally:
-        for db_name, session in (await db.sessions).items():
-            await session.close()
+class DbDependency:
+    def __init__(self, engines_params: list[dict[str, tp.Union[int, str, bool]]]):
+        self.db = Database(engines_params)
+
+    async def __call__(self) -> Database:
+
+        try:
+            yield self.db
+            to_commit = []
+            for db_name, session in (await self.db.sessions).items():
+                to_commit.append(session.commit())
+            if to_commit:
+                await asyncio.gather(*to_commit)
+        except Exception as e:
+            to_rollback = []
+            for db_name, session in (await self.db.sessions).items():
+                to_rollback.append(session.rollback())
+            if to_rollback:
+                await asyncio.gather(*to_rollback)
+            raise e
+        finally:
+            to_close = []
+            for db_name, session in (await self.db.sessions).items():
+                to_close.append(session.close())
+            if to_close:
+                await asyncio.gather(*to_close)
