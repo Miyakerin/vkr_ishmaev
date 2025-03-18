@@ -33,6 +33,38 @@ services:
     networks:
       - network
 
+  ai_minio:
+    image: minio/minio:latest
+    command: server --console-address ":${AI_MINIO_PORT_CONTAINER_2}" /data/
+    ports:
+      - ${AI_MINIO_PORT_HOST_1}:${AI_MINIO_PORT_CONTAINER_1}
+      - ${AI_MINIO_PORT_HOST_2}:${AI_MINIO_PORT_CONTAINER_2}
+    environment:
+      MINIO_ROOT_USER: ${AI_MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${AI_MINIO_ROOT_PASSWORD}
+    volumes:
+      - ai_minio:/data
+    networks:
+      - network
+
+  ai_db:
+    container_name: ai_db
+    image: postgres:14.3-alpine
+    env_file: .env
+    environment:
+      POSTGRES_PASSWORD: ${AI_DB_PASSWORD}
+      POSTGRES_USER: ${AI_DB_USER}
+      POSTGRES_DB: ${AI_DB_NAME}
+    ports:
+      - ${AI_DB_PORT_HOST}:${AI_DB_PORT_CONTAINER}
+    volumes:
+      - ai_db_data:/var/lib/postgresql/data
+    restart: unless-stopped
+    command:
+      - -p ${AI_DB_PORT_CONTAINER}
+    networks:
+      - network
+
   auth_service:
     container_name: auth_service
     build:
@@ -50,9 +82,28 @@ services:
     networks:
       - network
 
+  ai_service:
+    container_name: ai_service
+    build:
+      context: .
+      dockerfile: services/ai_service/Dockerfile
+    env_file:
+      - .env
+    environment:
+      - AI_DB_HOST=${AI_DB_NAME}
+    ports:
+      - ${AI_SERVICE_PORT_HOST}:${AI_SERVICE_PORT_CONTAINER}
+    depends_on:
+      - ai_db
+      - ai_minio
+    networks:
+      - network
+
 volumes:
   auth_db_data:
   auth_minio:
+  ai_db_data:
+  ai_minio:
 
 networks:
   network:

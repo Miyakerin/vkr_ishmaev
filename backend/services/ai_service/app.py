@@ -38,7 +38,6 @@ app.add_exception_handler(sqlalchemy.exc.IntegrityError, integrity_error_handler
 app.add_exception_handler(sqlalchemy.exc.InterfaceError, connection_exception_handler)
 app.add_exception_handler(Exception, exception_handler)
 
-
 if __name__ == "__main__":
     import uvicorn
     from core.settings import settings
