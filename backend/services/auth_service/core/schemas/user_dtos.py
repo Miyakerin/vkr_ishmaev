@@ -13,4 +13,5 @@ class UserRead(BaseDTO):
     user_id: int
     username: str
     email: str
+    is_admin: bool
     create_timestamp: datetime

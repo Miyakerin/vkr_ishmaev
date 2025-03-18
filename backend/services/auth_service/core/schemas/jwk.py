@@ -6,3 +6,7 @@ class JWKRead(BaseDTO):
     e: str
     kty: str
     kid: str
+
+
+class JWTToken(BaseDTO):
+    token: str

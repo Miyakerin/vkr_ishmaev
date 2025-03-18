@@ -38,6 +38,21 @@ class ServiceSettings(BaseSettings):
     port_host: int
 
 
+class MinioSetting(BaseSettings):
+    model_config = SettingsConfigDict(env_prefix="AUTH_MINIO_", extra="ignore")
+    ROOT_USER: str
+    ROOT_PASSWORD: str
+    PORT_HOST_1: int
+    PORT_HOST_2: int
+    url: tp.Optional[str] = None
+
+    @model_validator(mode='after')
+    def set_uri(self) -> tp.Self:
+        if self.url is None:
+            self.url = f""
+        return self
+
+
 class JwtSettings(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="AUTH_SERVICE_", extra="ignore")
     private_key_filename: str
@@ -62,6 +77,7 @@ class JwtSettings(BaseSettings):
 
 class Settings(BaseSettings):
     auth_db_settings: DBSettings = DBSettings()
+    minio_settings: MinioSetting = MinioSetting()
     service_settings: ServiceSettings = ServiceSettings()
     jwt_settings: JwtSettings = JwtSettings()
     all_db: tp.List[tp.Dict[str, tp.Union[str, int, bool]]] = [

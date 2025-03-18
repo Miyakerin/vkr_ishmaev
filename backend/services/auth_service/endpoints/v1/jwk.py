@@ -10,7 +10,7 @@ jwk_router = APIRouter(prefix="/jwk", tags=["jwk"])
 
 @jwk_router.get("")
 async def get_public_jwk() -> Response:
-    result = await JWTService(jwt_settings=settings.jwt_settings).public_jwk
+    result = JWTService(jwt_settings=settings.jwt_settings).public_jwk
     return Response(
         status_code=status.HTTP_200_OK,
         headers={"Content-Type": "application/json"},

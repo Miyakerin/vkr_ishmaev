@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Optional, Union
 
 import bcrypt
 import sqlalchemy
@@ -45,11 +45,17 @@ class UserService(BaseService):
 
     async def get_users(
             self,
-            username: str = None,
-            email: str = None,
-            existing: bool = True,
+            username: Optional[str] = None,
+            email: Optional[str] = None,
+            existing: Optional[bool] = True,
+            user_ids: Optional[Union[List[int], int]] = None
     ) -> List[User]:
         stmt = select(User)
+        if user_ids:
+            if isinstance(user_ids, int):
+                user_ids = [user_ids]
+            user_ids = tuple(user_ids)
+            stmt = stmt.where(User.user_id.in_(user_ids))
         if username:
             stmt = stmt.where(sqlalchemy.func.lower(User.username) == username.lower())
         if email:

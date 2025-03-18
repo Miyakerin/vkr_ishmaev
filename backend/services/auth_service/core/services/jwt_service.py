@@ -19,7 +19,7 @@ class JWTService(BaseService):
         return self.__jwt_settings
 
     @property
-    async def public_jwk(self) -> RSAKey:
+    def public_jwk(self) -> RSAKey:
         return self.__jwt_settings.public_key
 
     @property
