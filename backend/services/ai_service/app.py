@@ -4,7 +4,7 @@ import asyncio
 import sqlalchemy
 from fastapi import FastAPI
 
-from services.ai_service.core.scripts import refresh_key_every_n_minutes
+from services.ai_service.core.scripts import refresh_key_every_n_minutes, refresh_api_tokens_n_minutes
 
 
 @asynccontextmanager
@@ -15,6 +15,7 @@ async def lifespan(app: FastAPI):
     from endpoints import api_router
     app.include_router(api_router, prefix="/auth")
     asyncio.create_task(refresh_key_every_n_minutes(settings_=settings, minutes=30))
+    asyncio.create_task(refresh_api_tokens_n_minutes(settings_=settings, minutes=15))
     yield
 
 app = FastAPI(

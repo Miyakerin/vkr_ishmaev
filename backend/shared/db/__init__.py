@@ -1,1 +1,1 @@
-from sql_database import Database, DBError, DataBaseSession
+from .sql_database import Database, DBError, DataBaseSession

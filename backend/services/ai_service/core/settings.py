@@ -71,11 +71,37 @@ class MinioSetting(BaseSettings):
         return self
 
 
+class OpenAISetting(BaseSettings):
+    pass
+
+
+class GigachatSettings(BaseSettings):
+    model_config = SettingsConfigDict(env_prefix="AI_GIGACHAT_", extra="ignore")
+    scope: str
+    auth_key: str
+    auth_url: str = "https://ngw.devices.sberbank.ru:9443/api/v2/oauth"
+    models_list_url: str = "https://gigachat.devices.sberbank.ru/api/v1/models"
+    gen_url: str = "https://gigachat.devices.sberbank.ru/api/v1/chat/completions"
+    access_token: tp.Optional[str] = None
+    key: tp.Optional[str] = None
+
+
+class DeepSeekSettings(BaseSettings):
+    pass
+
+
+class APISettings(BaseSettings):
+    openai: OpenAISetting = OpenAISetting()
+    deepseek: DeepSeekSettings = DeepSeekSettings()
+    gigachat: GigachatSettings = GigachatSettings()
+
+
 class Settings(BaseSettings):
     ai_db_settings: DBSettings = DBSettings()
     minio_settings: MinioSetting = MinioSetting()
     service_settings: ServiceSettings = ServiceSettings()
     auth_service_settings: AuthServiceSettings = AuthServiceSettings()
+    api_settings: APISettings = APISettings()
     auth_key: tp.Optional[RSAKey] = None
     all_db: tp.List[tp.Dict[str, tp.Union[str, int, bool]]] = [
         {

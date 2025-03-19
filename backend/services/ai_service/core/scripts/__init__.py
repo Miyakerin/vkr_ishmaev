@@ -1,3 +1,5 @@
+import uuid
+
 import aiohttp
 import asyncio
 from authlib.jose import JsonWebKey
@@ -95,7 +97,28 @@ async def refresh_key_every_n_minutes(settings_: Settings, minutes: int = 30):
         await asyncio.sleep(minutes*60)
 
 
+async def refresh_api_tokens_n_minutes(settings_: Settings, minutes: int = 15):
+    while True:
+        await refresh_gigachat(settings_=settings_)
+        await asyncio.sleep(minutes*60)
+
+
 async def get_public_key(settings_: Settings):
     async with aiohttp.ClientSession() as session:
         async with session.get(f"{settings_.auth_service_settings.url}/auth/api/v1/jwk") as resp:
             settings_.auth_key = JsonWebKey.import_key(await resp.json())
+
+
+async def refresh_gigachat(settings_: Settings):
+    async with aiohttp.ClientSession() as session:
+        async with session.post(
+                f"{settings_.api_settings.gigachat.auth_url}",
+                ssl=False,
+                headers={
+                    "RqUID": str(uuid.uuid4()),
+                    "Authorization": f"Basic {settings_.api_settings.gigachat.auth_key}",
+                    "Content-Type": "application/x-www-form-urlencoded"
+                },
+                data={"scope": settings_.api_settings.gigachat.scope},
+        ) as resp:
+            settings_.api_settings.gigachat.access_token = (await resp.json())["access_token"]
