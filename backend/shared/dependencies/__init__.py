@@ -38,6 +38,12 @@ class DbDependency:
             #     await asyncio.gather(*to_close)
 
 
+class User:
+    def __init__(self, user_id: int, is_admin: bool):
+        self.user_id: int = user_id
+        self.is_admin: bool = is_admin
+
+
 class AuthDependency:
     token_header = APIKeyHeader(name="Authorization")
 
@@ -45,9 +51,8 @@ class AuthDependency:
         self.public_jwk = public_jwk
         pass
 
-    async def __call__(self, token: str = Security(token_header)):
+    async def __call__(self, token: str = Security(token_header)) -> User:
         if not token:
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
         claims = jwt.decode(token, key=self.public_jwk)
-        return claims
-        pass
+        return User(claims['user_id'], claims['is_admin'])
