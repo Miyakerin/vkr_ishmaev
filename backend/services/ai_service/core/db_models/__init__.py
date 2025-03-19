@@ -81,3 +81,14 @@ class MessageDataXFile(MyBase):
                                                        default=datetime.now())
     delete_timestamp: Mapped[datetime] = mapped_column("delete_timestamp", DateTime(timezone=False), nullable=True,
                                                        default=None)
+
+
+class UserBalance(MyBase):
+    __tablename__ = 'user_balance'
+    user_balance_id: Mapped[int] = mapped_column("user_balance_id", Integer, primary_key=True, nullable=False)
+    user_id: Mapped[int] = mapped_column("user_id", Integer, nullable=False)
+    balance: Mapped[int] = mapped_column("balance", Integer, nullable=False, default=0)
+    create_timestamp: Mapped[datetime] = mapped_column("create_timestamp", DateTime(timezone=False), nullable=False,
+                                                       default=datetime.now())
+    delete_timestamp: Mapped[datetime] = mapped_column("delete_timestamp", DateTime(timezone=False), nullable=True,
+                                                       default=None)

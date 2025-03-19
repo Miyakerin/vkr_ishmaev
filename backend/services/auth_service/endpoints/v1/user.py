@@ -29,7 +29,7 @@ async def login(
     return Response(
         status_code=status.HTTP_200_OK,
         content=JWTToken.model_validate(
-            {"token": result},
+            {"access_token": result},
             from_attributes=True
         ).model_dump_json(),
         headers={"content-type": "application/json"}
