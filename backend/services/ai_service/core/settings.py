@@ -72,7 +72,9 @@ class MinioSetting(BaseSettings):
 
 
 class OpenAISetting(BaseSettings):
-    pass
+    model_config = SettingsConfigDict(env_prefix="AI_OPENAI_", extra="ignore")
+    auth_key: str
+    completions_url: str = "https://api.openai.com/v1/chat/completions"
 
 
 class GigachatSettings(BaseSettings):
@@ -81,13 +83,15 @@ class GigachatSettings(BaseSettings):
     auth_key: str
     auth_url: str = "https://ngw.devices.sberbank.ru:9443/api/v2/oauth"
     models_list_url: str = "https://gigachat.devices.sberbank.ru/api/v1/models"
-    gen_url: str = "https://gigachat.devices.sberbank.ru/api/v1/chat/completions"
+    completions_url: str = "https://gigachat.devices.sberbank.ru/api/v1/chat/completions"
     access_token: tp.Optional[str] = None
     key: tp.Optional[str] = None
 
 
 class DeepSeekSettings(BaseSettings):
-    pass
+    model_config = SettingsConfigDict(env_prefix="AI_DEEPSEEK_", extra="ignore")
+    auth_key: str
+    completions_url: str = "https://api.deepseek.com/chat/completions"
 
 
 class APISettings(BaseSettings):
