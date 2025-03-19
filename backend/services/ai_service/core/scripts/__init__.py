@@ -1,9 +1,11 @@
 import aiohttp
+import asyncio
 from authlib.jose import JsonWebKey
+from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncEngine
 
 from shared.db.sql_database import Database
-from ..db_models import MyBase
+from ..db_models import MyBase, Chat, Message, MessageData, MessageDataXFile
 from ..settings import settings, Settings
 
 
@@ -12,12 +14,85 @@ async def init():
     await db.run_sync_batch(MyBase.metadata.create_all)
     for engine in (await db.get_engines()).values():
         await raw_sql_scripts_init(engine=engine)
-    await get_public_key(settings_=settings)
 
 
 async def raw_sql_scripts_init(engine: AsyncEngine):
     async with engine.begin() as conn:
-        pass
+
+        # =================================================================
+
+        table_name = Chat.__tablename__
+        function_name = f"trigger_on_{table_name}"
+        query = f"""
+            CREATE OR REPLACE FUNCTION {function_name}() RETURNS TRIGGER AS ${function_name}$
+                BEGIN
+                    IF (NEW.delete_timestamp IS NOT NULL) THEN
+                        UPDATE {Message.__tablename__}
+                        SET delete_timestamp = NEW.delete_timestamp
+                        WHERE chat_id = NEW.chat_id;
+                    END IF;
+
+                    RETURN NEW;
+                END;
+            ${function_name}$ LANGUAGE plpgsql;
+        """
+        await conn.execute(text(query))
+        query = f"""CREATE OR REPLACE TRIGGER {function_name} BEFORE INSERT OR UPDATE ON {table_name}
+                                FOR EACH ROW EXECUTE FUNCTION {function_name}();
+                            """
+        await conn.execute(text(query))
+
+        # =================================================================
+
+        table_name = Message.__tablename__
+        function_name = f"trigger_on_{table_name}"
+        query = f"""
+                    CREATE OR REPLACE FUNCTION {function_name}() RETURNS TRIGGER AS ${function_name}$
+                        BEGIN
+                            IF (NEW.delete_timestamp IS NOT NULL) THEN
+                                UPDATE {MessageData.__tablename__}
+                                SET delete_timestamp = NEW.delete_timestamp
+                                WHERE message_id = NEW.message_id;
+                            END IF;
+
+                            RETURN NEW;
+                        END;
+                    ${function_name}$ LANGUAGE plpgsql;
+                """
+        await conn.execute(text(query))
+        query = f"""CREATE OR REPLACE TRIGGER {function_name} BEFORE INSERT OR UPDATE ON {table_name}
+                                        FOR EACH ROW EXECUTE FUNCTION {function_name}();
+                                    """
+        await conn.execute(text(query))
+
+        # =================================================================
+
+        table_name = MessageData.__tablename__
+        function_name = f"trigger_on_{table_name}"
+        query = f"""
+                            CREATE OR REPLACE FUNCTION {function_name}() RETURNS TRIGGER AS ${function_name}$
+                                BEGIN
+                                    IF (NEW.delete_timestamp IS NOT NULL) THEN
+                                        UPDATE {MessageDataXFile.__tablename__}
+                                        SET delete_timestamp = NEW.delete_timestamp
+                                        WHERE message_data_id = NEW.message_data_id;
+                                    END IF;
+
+                                    RETURN NEW;
+                                END;
+                            ${function_name}$ LANGUAGE plpgsql;
+                        """
+        await conn.execute(text(query))
+        query = f"""CREATE OR REPLACE TRIGGER {function_name} BEFORE INSERT OR UPDATE ON {table_name}
+                                                FOR EACH ROW EXECUTE FUNCTION {function_name}();
+                                            """
+        await conn.execute(text(query))
+
+
+async def refresh_key_every_n_minutes(settings_: Settings, minutes: int = 30):
+    while True:
+        await get_public_key(settings_=settings_)
+        await asyncio.sleep(minutes*60)
 
 
 async def get_public_key(settings_: Settings):
