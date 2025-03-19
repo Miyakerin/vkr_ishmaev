@@ -16,8 +16,9 @@ async def init():
 
 
 async def raw_sql_scripts_init(engine: AsyncEngine):
-    table_name = UserXProfilePicture.__tablename__
+
     async with engine.begin() as conn:
+        table_name = UserXProfilePicture.__tablename__
         function_name = f"trigger_on_{table_name}"
         query = f"""
             CREATE OR REPLACE FUNCTION {function_name}() RETURNS TRIGGER AS ${function_name}$
@@ -25,7 +26,7 @@ async def raw_sql_scripts_init(engine: AsyncEngine):
                     IF (NEW.is_main = true) THEN
                         UPDATE {table_name}
                         SET is_main = false
-                        WHERE user_x_profile_picture_id <> NEW.id;
+                        WHERE user_x_profile_picture_id <> NEW.user_x_profile_picture_id;
                     END IF;
                     
                     RETURN NEW;

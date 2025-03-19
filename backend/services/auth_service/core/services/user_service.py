@@ -7,12 +7,13 @@ from sqlalchemy import select, insert
 from services.auth_service.core.db_models import User
 from services.auth_service.core.services import BaseService
 from services.auth_service.core.settings import settings
-from shared.db.sql_database import Database
-from shared.exceptions.exceptions import CustomException
+import shared.dependencies as dep
+import shared.exceptions as ex
+import shared.db as db_
 
 
 class UserService(BaseService):
-    def __init__(self, db:Database=None, current_user=None):
+    def __init__(self, db: db_.Database = None, current_user: dep.User = None):
         super(UserService, self).__init__(db=db, current_user=current_user)
 
     async def create_user(self, username: str, email: str, password: str) -> User:
@@ -26,7 +27,7 @@ class UserService(BaseService):
         result = await (await self.db.sessions)[settings.auth_db_settings.name].execute(stmt)
         result = [x["User"] for x in result.mappings().all()]
         if result:
-            raise CustomException(status_code=400, detail="User w/ email or login already exists")
+            raise ex.CustomException(status_code=400, detail="User w/ email or login already exists")
 
         stmt = (
             insert(User)
@@ -41,7 +42,7 @@ class UserService(BaseService):
         result = result.mappings().one_or_none()
         if result:
             return result["User"]
-        raise CustomException(status_code=400, detail="Error while creating user")
+        raise ex.CustomException(status_code=400, detail="Error while creating user")
 
     async def get_users(
             self,
@@ -85,12 +86,12 @@ class UserService(BaseService):
                 )
             )
         else:
-            raise CustomException(status_code=400, detail="Invalid credentials")
+            raise ex.CustomException(status_code=400, detail="Invalid credentials")
         result = await (await self.db.sessions)[settings.auth_db_settings.name].execute(stmt)
         result = result.mappings().one_or_none()
         if not result:
-            raise CustomException(status_code=404, detail="User does not exist")
+            raise ex.CustomException(status_code=404, detail="User does not exist")
         result = result["User"]
         if bcrypt.checkpw(password.encode("UTF-8"), result.password.encode("UTF-8")):
             return result
-        raise CustomException(status_code=401, detail="Invalid credentials")
+        raise ex.CustomException(status_code=401, detail="Invalid credentials")

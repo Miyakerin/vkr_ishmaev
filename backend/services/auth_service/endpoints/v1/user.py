@@ -8,7 +8,7 @@ from services.auth_service.core.services.jwt_service import JWTService
 from services.auth_service.core.services.user_service import UserService
 from services.auth_service.core.settings import settings
 from shared.db.sql_database import Database
-from shared.dependencies import DbDependency, AuthDependency
+from shared.dependencies import DbDependency, AuthDependency, User
 from shared.exceptions.exceptions import CustomException
 
 user_router = APIRouter(prefix="/user", tags=["user"])
@@ -56,9 +56,9 @@ async def register(
 async def get_user(
         user_id: int,
         db: Database = Depends(db_dependency),
-        token_claims = Depends(auth_dependency),
+        current_user: User = Depends(auth_dependency),
 ):
-    if token_claims.get("user_id") == user_id or token_claims.get("is_admin"):
+    if current_user.user_id == user_id or current_user.is_admin:
         user = await UserService(db=db).get_users(user_ids=user_id)
         if user:
             user = user[0]
