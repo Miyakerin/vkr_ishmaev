@@ -1,3 +1,4 @@
+from authlib.jose import RSAKey
 from pydantic import model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 import typing as tp
@@ -29,9 +30,30 @@ class DBSettings(BaseSettings):
 
 class ServiceSettings(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="AI_SERVICE_", extra="ignore")
+    name: str
+    host: str
     mode: str
     port_container: int
     port_host: int
+
+
+class AuthServiceSettings(BaseSettings):
+    model_config = SettingsConfigDict(env_prefix="AUTH_SERVICE_", extra="ignore")
+    name: str
+    host: str
+    mode: str
+    port_container: int
+    port_host: int
+    url: tp.Optional[str] = None
+
+    @model_validator(mode='after')
+    def set_uri(self) -> tp.Self:
+        if self.url is None:
+            if self.host == "localhost":
+                self.url = f"http://{self.host}:{self.port_host}"
+            else:
+                self.url = f"http://{self.host}:{self.port_container}"
+        return self
 
 
 class MinioSetting(BaseSettings):
@@ -53,6 +75,8 @@ class Settings(BaseSettings):
     ai_db_settings: DBSettings = DBSettings()
     minio_settings: MinioSetting = MinioSetting()
     service_settings: ServiceSettings = ServiceSettings()
+    auth_service_settings: AuthServiceSettings = AuthServiceSettings()
+    auth_key: tp.Optional[RSAKey] = None
     all_db: tp.List[tp.Dict[str, tp.Union[str, int, bool]]] = [
         {
             "name": ai_db_settings.name,

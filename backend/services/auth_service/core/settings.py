@@ -33,6 +33,8 @@ class DBSettings(BaseSettings):
 
 class ServiceSettings(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="AUTH_SERVICE_", extra="ignore")
+    name: str
+    host: str
     mode: str
     port_container: int
     port_host: int

@@ -42,4 +42,4 @@ app.add_exception_handler(Exception, exception_handler)
 if __name__ == "__main__":
     import uvicorn
     from core.settings import settings
-    uvicorn.run(app, host="0.0.0.0", port=settings.service_settings.port_container)
+    uvicorn.run(app, host=settings.service_settings.host, port=settings.service_settings.port_container)

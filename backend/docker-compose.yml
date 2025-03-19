@@ -66,7 +66,7 @@ services:
       - network
 
   auth_service:
-    container_name: auth_service
+    container_name: ${AUTH_SERVICE_NAME}
     build:
       context: .
       dockerfile: services/auth_service/Dockerfile
@@ -74,6 +74,7 @@ services:
       - .env
     environment:
       - AUTH_DB_HOST=${AUTH_DB_NAME}
+      - AUTH_SERVICE_HOST=${AUTH_SERVICE_NAME}
     ports:
       - ${AUTH_SERVICE_PORT_HOST}:${AUTH_SERVICE_PORT_CONTAINER}
     depends_on:
@@ -83,7 +84,7 @@ services:
       - network
 
   ai_service:
-    container_name: ai_service
+    container_name: ${AI_SERVICE_NAME}
     build:
       context: .
       dockerfile: services/ai_service/Dockerfile
@@ -91,11 +92,14 @@ services:
       - .env
     environment:
       - AI_DB_HOST=${AI_DB_NAME}
+      - AUTH_SERVICE_HOST=${AUTH_SERVICE_NAME}
+      - AI_SERVICE_HOST=${AI_SERVICE_NAME}
     ports:
       - ${AI_SERVICE_PORT_HOST}:${AI_SERVICE_PORT_CONTAINER}
     depends_on:
       - ai_db
       - ai_minio
+      - auth_service
     networks:
       - network
 
