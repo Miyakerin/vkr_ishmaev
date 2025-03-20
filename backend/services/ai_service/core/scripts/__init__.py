@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncEngine
 
 from shared.db.sql_database import Database
 from ..db_models import MyBase, Chat, Message, MessageData, MessageDataXFile
-from ..settings import settings, Settings
+from ..settings import settings, Settings, GigachatSettings
 
 
 async def init():
@@ -91,34 +91,60 @@ async def raw_sql_scripts_init(engine: AsyncEngine):
         await conn.execute(text(query))
 
 
-async def refresh_key_every_n_minutes(settings_: Settings, minutes: int = 30):
+async def refresh_key_every_n_minutes(minutes: int = 30, max_errors=10):
+    error_counter = 0
     while True:
-        await get_public_key(settings_=settings_)
-        await asyncio.sleep(minutes*60)
+        try:
+            await get_public_key()
+            await asyncio.sleep(minutes*60)
+        except Exception:
+            error_counter += 1
+            if error_counter < max_errors:
+                continue
+            error_counter = 0
+            print(f"max errors reached, sleeping for 5 minutes")
+            await asyncio.sleep(5 * 60)
 
 
-async def refresh_api_tokens_n_minutes(settings_: Settings, minutes: int = 15):
+async def refresh_api_tokens_n_minutes(minutes: int = 15, max_errors=10):
+    error_counter = 0
     while True:
-        await refresh_gigachat(settings_=settings_)
-        await asyncio.sleep(minutes*60)
+        try:
+            await refresh_gigachat()
+            await asyncio.sleep(minutes*60)
+        except Exception:
+            error_counter += 1
+            if error_counter < max_errors:
+                continue
+            error_counter = 0
+            print(f"max errors reached, sleeping for 5 minutes")
+            await asyncio.sleep(5*60)
 
 
-async def get_public_key(settings_: Settings):
+async def get_public_key():
+    global settings
     async with aiohttp.ClientSession() as session:
-        async with session.get(f"{settings_.auth_service_settings.url}/auth/api/v1/jwk") as resp:
-            settings_.auth_key = JsonWebKey.import_key(await resp.json())
+        try:
+            async with session.get(f"{settings.auth_service_settings.url}/api/v1/jwk") as resp:
+                settings.auth_key = JsonWebKey.import_key(await resp.json())
+        except Exception:
+            settings.auth_key = None
 
 
-async def refresh_gigachat(settings_: Settings):
+async def refresh_gigachat():
+    global settings
     async with aiohttp.ClientSession() as session:
-        async with session.post(
-                f"{settings_.api_settings.gigachat.auth_url}",
-                ssl=False,
-                headers={
-                    "RqUID": str(uuid.uuid4()),
-                    "Authorization": f"Basic {settings_.api_settings.gigachat.auth_key}",
-                    "Content-Type": "application/x-www-form-urlencoded"
-                },
-                data={"scope": settings_.api_settings.gigachat.scope},
-        ) as resp:
-            settings_.api_settings.gigachat.access_token = (await resp.json())["access_token"]
+        try:
+            async with session.post(
+                    f"{settings.api_settings.gigachat.auth_url}",
+                    ssl=False,
+                    headers={
+                        "RqUID": str(uuid.uuid4()),
+                        "Authorization": f"Basic {settings.api_settings.gigachat.auth_key}",
+                        "Content-Type": "application/x-www-form-urlencoded"
+                    },
+                    data={"scope": settings.api_settings.gigachat.scope},
+            ) as resp:
+                settings.api_settings.gigachat.access_token = (await resp.json())["access_token"]
+        except Exception:
+            settings.api_settings.gigachat.access_token = None

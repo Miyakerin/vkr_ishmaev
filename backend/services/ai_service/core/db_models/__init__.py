@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import MetaData, Integer, DateTime, String, ForeignKey
+from sqlalchemy import MetaData, Integer, DateTime, String, ForeignKey, Text
 from sqlalchemy.orm import declarative_base, mapped_column, Mapped
 
 
@@ -33,7 +33,6 @@ class Chat(MyBase):
 
     chat_id: Mapped[int] = mapped_column("chat_id", Integer, primary_key=True, nullable=False)
     user_id: Mapped[int] = mapped_column("user_id", Integer, nullable=False)
-    model_name: Mapped[str] = mapped_column("model_name", String, nullable=False)
     create_timestamp: Mapped[datetime] = mapped_column("create_timestamp", DateTime(timezone=False), nullable=False,
                                                        default=datetime.now())
     delete_timestamp: Mapped[datetime] = mapped_column("delete_timestamp", DateTime(timezone=False), nullable=True,
@@ -43,6 +42,8 @@ class Chat(MyBase):
 class Message(MyBase):
     __tablename__ = 'message'
     message_id: Mapped[int] = mapped_column("message_id", Integer, primary_key=True, nullable=False)
+    company_name: Mapped[str] = mapped_column("company_name", String(128), nullable=True, default=None)
+    sender: Mapped[str] = mapped_column("sender", String(256), nullable=False)
     chat_id: Mapped[int] = mapped_column("chat_id", ForeignKey(Chat.chat_id), nullable=False)
     create_timestamp: Mapped[datetime] = mapped_column("create_timestamp", DateTime(timezone=False), nullable=False,
                                                        default=datetime.now())
@@ -54,6 +55,7 @@ class MessageData(MyBase):
     __tablename__ = 'message_data'
     message_data_id: Mapped[int] = mapped_column("message_data_id", Integer, primary_key=True, nullable=False)
     message_id: Mapped[int] = mapped_column("message_id", ForeignKey(Message.message_id), nullable=False)
+    message_data: Mapped[str] = mapped_column("message_data", Text, nullable=False)
     create_timestamp: Mapped[datetime] = mapped_column("create_timestamp", DateTime(timezone=False), nullable=False,
                                                        default=datetime.now())
     delete_timestamp: Mapped[datetime] = mapped_column("delete_timestamp", DateTime(timezone=False), nullable=True,
