@@ -2,7 +2,7 @@ from typing import List, Union, Optional
 
 from sqlalchemy import insert, select, update
 
-from services.ai_service.core.db_models import Chat, Message, MessageData, MessageDataXFile, File
+from services.ai_service.core.db_models import Chat, Message, MessageData, MessageDataXFile, File, FileXCompany
 from services.ai_service.core.schemas.chat_dto import ChatCreateUpdate, MessageDataRead, MessageDataCreateUpdate
 from services.ai_service.core.services import BaseService
 from services.ai_service.core.settings import settings
@@ -13,15 +13,20 @@ from shared.exceptions.exceptions import CustomException
 
 class AIService(BaseService):
 
-    available_models = {
-        "gigachat": [],
-        "openai": [],
-        "deepseek": []
-    }
-
     default_system_prompts = {
         "ru": "Ты чат-бот помощник, который все силы прилагает, чтобы решить вопрос пользователя",
         "en": "You are chat-bot helper, who do everything you can for solving user problems"
+    }
+
+    models_settings = {
+        "gigachat": {
+            "roles": {
+                "system": "system",
+                "user": "user",
+                "assistant": "assistant"
+            },
+            "models": [x.lower() for x in ["GigaChat-2", "GigaChat-2-Max", "GigaChat"]]
+        }
     }
 
     available_languages = ["ru", "en"]
@@ -74,9 +79,9 @@ class AIService(BaseService):
                 chat_ids = [chat_ids]
             stmt = stmt.where(Chat.chat_id.in_(chat_ids))
         if existing is True:
-            stmt = stmt.where(Chat.delete_timestamp != None)
-        elif existing is False:
             stmt = stmt.where(Chat.delete_timestamp == None)
+        elif existing is False:
+            stmt = stmt.where(Chat.delete_timestamp != None)
         result = [x["Chat"] for x in (await (await self.db.sessions)[settings.ai_db_settings.name].execute(stmt)).mappings().all()]
         return result
 
@@ -91,10 +96,11 @@ class AIService(BaseService):
             raise CustomException(status_code=403, detail="You are not admin and not allowed to access this chat")
         return result
 
-    async def get_chat_history(self, chat_id: int, bypass: bool = False):
+    async def get_chat_history(self, chat_id: int, bypass: bool = False, only_main: bool = False):
         if not bypass:
             current_chat = await self.get_chat(chat_id=chat_id)
 
+        main_array = "true" if only_main else "true, false"
         query = f"""
             SELECT JSON_BUILD_OBJECT(
                 'chat_data', JSON_BUILD_OBJECT(
@@ -138,17 +144,29 @@ class AIService(BaseService):
                             'filename', file.filename,
                             's3_key', file.s3_key,
                             'bucket_name', file.bucket_name,
-                            'file_create_timestamp', file.create_timestamp
+                            'file_create_timestamp', file.create_timestamp,
+                            'company_file', json_agg_strict(json_build_object(
+                                'file_x_company_id', file_company.file_x_company_id,
+                                'company_name', file_company.company_name,
+                                'file_company_id', file_company.file_company_id,
+                                'id_type', file_company.id_type,
+                                'create_timestamp', file_company.create_timestamp
+                            ))
                         ) as data
                         FROM {MessageDataXFile.__tablename__} as attachment
                         
                         INNER JOIN {File.__tablename__} as file
                             ON file.file_id = attachment.file_id AND file.delete_timestamp IS NULL
+                            
+                        LEFT JOIN {FileXCompany.__tablename__} as file_company
+                            ON file_company.file_id = file.file_id AND file_company.delete_timestamp IS NULL
+                            
                         WHERE attachment.delete_timestamp IS NULL
+                        GROUP BY attachment.message_data_x_file_id, attachment.file_id, attachment.create_timestamp, file.filename, file.s3_key, file.bucket_name, file.create_timestamp
                     ) as attachment
                         ON attachment.message_data_id = message_data.message_data_id
                     
-                    WHERE message_data.delete_timestamp IS NULL
+                    WHERE message_data.delete_timestamp IS NULL AND message_data.is_main = ANY(ARRAY[{main_array}])
                     GROUP BY message_data.message_data_id, message_data.text, message_data.is_main, message_data.create_timestamp
                 ) as message_data
                     ON message_data.message_id = message.message_id
@@ -162,15 +180,25 @@ class AIService(BaseService):
         """
 
         result = await self.db.query(query=query, db_name=settings.ai_db_settings.name, params={"chat_id": chat_id})
-        return result[0]
+        return result[0]["data"]
 
-    # async def create_new_message(self, chat_id: int, value: MessageDataCreateUpdate, company_name: str, model_name: str):
-    #     company_name, model_name = company_name.strip().lower(), model_name.strip().lower()
-    #     await self.get_chat_history(chat_id=chat_id, bypass=True)
-    #     if company_name not in self.available_models.keys():
-    #         raise CustomException(status_code=400, detail="Invalid company name")
-    #     if model_name not in self.available_models[company_name]:
-    #         raise CustomException(status_code=400, detail="Invalid model name")
-    #     current_chat = await self.get_chat(chat_id=chat_id)
-    #
-    #     pass
+    async def create_new_message(self, chat_id: int, value: MessageDataCreateUpdate, company_name: str, model_name: str):
+        company_name, model_name = company_name.strip().lower(), model_name.strip().lower()
+        if company_name not in self.models_settings.keys():
+            raise CustomException(status_code=400, detail="Invalid company name")
+        if model_name not in self.models_settings[company_name]["models"]:
+            raise CustomException(status_code=400, detail="Invalid model name")
+        current_chat = await self.get_chat(chat_id=chat_id)
+        chat_history = await self.get_chat_history(chat_id=chat_id, bypass=True, only_main=True)
+        previous_messages = []
+        for message in chat_history["messages"]:
+            if company_name == "gigachat":
+                previous_messages.append({
+                    "role": self.models_settings[company_name]["roles"]["user"] if message["sender"] == "user" else self.models_settings[company_name]["roles"]["assistant"],
+                    "content": message["text"]
+                })
+            else:
+                raise CustomException(status_code=400, detail="Company currently not supported")
+        print(chat_history)
+
+        pass

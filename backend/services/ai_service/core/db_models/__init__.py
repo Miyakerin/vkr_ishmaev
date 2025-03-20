@@ -87,6 +87,19 @@ class MessageDataXFile(MyBase):
                                                        default=None)
 
 
+class FileXCompany(MyBase):
+    __tablename__ = 'file_x_company'
+    file_x_company_id: Mapped[int] = mapped_column("file_x_company_id", Integer, primary_key=True, nullable=False)
+    file_id: Mapped[int] = mapped_column("file_id", ForeignKey(File.file_id), nullable=False)
+    company_name: Mapped[str] = mapped_column("company_name", String(256), nullable=False)
+    file_company_id: Mapped[str] = mapped_column("file_company_id", String(512), nullable=False)
+    id_type: Mapped[str] = mapped_column("id_type", String(64), nullable=False)
+    create_timestamp: Mapped[datetime] = mapped_column("create_timestamp", DateTime(timezone=False), nullable=False,
+                                                       default=datetime.now())
+    delete_timestamp: Mapped[datetime] = mapped_column("delete_timestamp", DateTime(timezone=False), nullable=True,
+                                                       default=None)
+
+
 class UserBalance(MyBase):
     __tablename__ = 'user_balance'
     user_balance_id: Mapped[int] = mapped_column("user_balance_id", Integer, primary_key=True, nullable=False)
