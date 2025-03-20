@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from starlette import status
 from starlette.responses import Response
 
@@ -16,7 +16,7 @@ auth_dependency = CustomAuthDependency()
 
 @chat_router.post("", response_model=ChatRead, status_code=status.HTTP_201_CREATED)
 async def create_chat(
-        body: ChatCreateUpdate = ChatCreateUpdate(),
+        body: ChatCreateUpdate,
         db: Database = Depends(db_dependency),
         current_user: User = Depends(auth_dependency)
 ) -> Response:
@@ -32,7 +32,9 @@ async def create_chat(
 async def new_message(
         body: MessageDataCreateUpdate,
         chat_id: int,
+        company_name: str = Query(...),
+        model_name: str = Query(...),
         db: Database = Depends(db_dependency),
         current_user: User = Depends(auth_dependency)
 ) -> Response:
-    await AIService(db=db, current_user=current_user).create_new_message(chat_id=chat_id, value=body)
+    await AIService(db=db, current_user=current_user).create_new_message(chat_id=chat_id, value=body, company_name=company_name, model_name=model_name)

@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import MetaData, Integer, DateTime, String, ForeignKey, Text
+from sqlalchemy import MetaData, Integer, DateTime, String, ForeignKey, Text, Boolean
 from sqlalchemy.orm import declarative_base, mapped_column, Mapped
 
 
@@ -32,6 +32,7 @@ class Chat(MyBase):
     __tablename__ = 'chat'
 
     chat_id: Mapped[int] = mapped_column("chat_id", Integer, primary_key=True, nullable=False)
+    language: Mapped[str] = mapped_column("language", String(16), nullable=False)
     user_id: Mapped[int] = mapped_column("user_id", Integer, nullable=False)
     create_timestamp: Mapped[datetime] = mapped_column("create_timestamp", DateTime(timezone=False), nullable=False,
                                                        default=datetime.now())
@@ -55,7 +56,8 @@ class MessageData(MyBase):
     __tablename__ = 'message_data'
     message_data_id: Mapped[int] = mapped_column("message_data_id", Integer, primary_key=True, nullable=False)
     message_id: Mapped[int] = mapped_column("message_id", ForeignKey(Message.message_id), nullable=False)
-    message_data: Mapped[str] = mapped_column("message_data", Text, nullable=False)
+    text: Mapped[str] = mapped_column("text", Text, nullable=False)
+    is_main: Mapped[bool] = mapped_column("is_main", Boolean, nullable=False, default=True)
     create_timestamp: Mapped[datetime] = mapped_column("create_timestamp", DateTime(timezone=False), nullable=False,
                                                        default=datetime.now())
     delete_timestamp: Mapped[datetime] = mapped_column("delete_timestamp", DateTime(timezone=False), nullable=True,

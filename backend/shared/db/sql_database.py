@@ -72,9 +72,8 @@ class DataBaseSession:
     async def query(self, query: tp.Union[str, TextClause], params=None):
         if isinstance(query, str):
             query = text(query)
-        async with await self.session as session:
-            result = await session.execute(query, params=params)
-            response = [dict(r._mapping) for r in result]
+        result = await (await self.session).execute(query, params=params)
+        response = [dict(r._mapping) for r in result]
         return response
 
 

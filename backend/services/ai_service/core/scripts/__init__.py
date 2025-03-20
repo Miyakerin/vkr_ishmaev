@@ -79,6 +79,12 @@ async def raw_sql_scripts_init(engine: AsyncEngine):
                                         SET delete_timestamp = NEW.delete_timestamp
                                         WHERE message_data_id = NEW.message_data_id;
                                     END IF;
+                                    
+                                    IF (NEW.is_main = true) THEN
+                                        UPDATE {MessageData.__tablename__}
+                                        SET is_main = false
+                                        WHERE message_data_id <> NEW.message_data_id;
+                                    END IF;
 
                                     RETURN NEW;
                                 END;

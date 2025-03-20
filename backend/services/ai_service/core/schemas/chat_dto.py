@@ -7,12 +7,13 @@ from services.ai_service.core.schemas import BaseDTO
 
 
 class ChatCreateUpdate(BaseDTO):
-    pass
+    language: str
 
 
 class ChatRead(BaseDTO):
     chat_id: int
     user_id: int
+    language: str
     create_timestamp: datetime
 
 
