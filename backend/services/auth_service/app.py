@@ -11,7 +11,7 @@ async def lifespan(app: FastAPI):
     await init()
 
     from endpoints import api_router
-    app.include_router(api_router, prefix="/auth")
+    app.include_router(api_router)
 
     yield
 
