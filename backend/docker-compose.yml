@@ -1,7 +1,8 @@
 version: "3.9"
 
 services:
-  auth_minio:
+  auth-minio:
+    container_name: ${AUTH_MINIO_NAME}
     image: minio/minio:latest
     command: server --console-address ":${AUTH_MINIO_PORT_CONTAINER_2}" /data/
     ports:
@@ -15,8 +16,8 @@ services:
     networks:
       - network
 
-  auth_db:
-    container_name: auth_db
+  auth-db:
+    container_name: ${AUTH_DB_NAME}
     image: postgres:17-alpine
     env_file: .env
     environment:
@@ -33,9 +34,12 @@ services:
     networks:
       - network
 
-  ai_minio:
+  ai-minio:
+    container_name: ${AI_MINIO_NAME}
     image: minio/minio:latest
-    command: server --console-address ":${AI_MINIO_PORT_CONTAINER_2}" /data/
+#    post_start:
+#      - command: mc config host add minio http://ai_minio:${AI_MINIO_PORT_CONTAINER_1} ${AI_MINIO_ROOT_USER} ${AI_MINIO_ROOT_PASSWORD} && mc admin user add set ${AI_MINIO_ACCESS_KEY} ${AI_MINIO_SECRET_KEY} && mc admin policy attach set readwrite --user=${AI_MINIO_ACCESS_KEY}
+    command: server --console-address ":${AI_MINIO_PORT_CONTAINER_2}" /data/ --address ":${AI_MINIO_PORT_CONTAINER_1}"
     ports:
       - ${AI_MINIO_PORT_HOST_1}:${AI_MINIO_PORT_CONTAINER_1}
       - ${AI_MINIO_PORT_HOST_2}:${AI_MINIO_PORT_CONTAINER_2}
@@ -47,8 +51,24 @@ services:
     networks:
       - network
 
-  ai_db:
-    container_name: ai_db
+  ai-minio-setup:
+    image: minio/mc:latest
+    depends_on:
+      - ai-minio
+    entrypoint: >
+      /bin/sh -c "
+      echo ${AI_MINIO_ROOT_USER};
+      echo ${AI_MINIO_ROOT_PASSWORD};
+      /usr/bin/mc config host add myminio http://${AI_MINIO_NAME}:${AI_MINIO_PORT_CONTAINER_1}/ ${AI_MINIO_ROOT_USER} ${AI_MINIO_ROOT_PASSWORD};
+      /usr/bin/mc admin user add myminio ${AI_MINIO_ACCESS_KEY} ${AI_MINIO_SECRET_KEY};
+      /usr/bin/mc admin policy attach myminio readwrite --user=${AI_MINIO_ACCESS_KEY};
+      exit 0;
+      "
+    networks:
+      - network
+
+  ai-db:
+    container_name: ${AI_DB_NAME}
     image: postgres:17-alpine
     env_file: .env
     environment:
@@ -65,7 +85,7 @@ services:
     networks:
       - network
 
-  auth_service:
+  auth-service:
     container_name: ${AUTH_SERVICE_NAME}
     build:
       context: .
@@ -78,12 +98,12 @@ services:
     ports:
       - ${AUTH_SERVICE_PORT_HOST}:${AUTH_SERVICE_PORT_CONTAINER}
     depends_on:
-      - auth_db
-      - auth_minio
+      - auth-db
+      - auth-minio
     networks:
       - network
 
-  ai_service:
+  ai-service:
     container_name: ${AI_SERVICE_NAME}
     build:
       context: .
@@ -97,9 +117,10 @@ services:
     ports:
       - ${AI_SERVICE_PORT_HOST}:${AI_SERVICE_PORT_CONTAINER}
     depends_on:
-      - ai_db
-      - ai_minio
-      - auth_service
+      - ai-db
+      - ai-minio
+      - auth-service
+      - ai-minio-setup
     networks:
       - network
 
