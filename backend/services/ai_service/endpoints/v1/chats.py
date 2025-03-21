@@ -37,4 +37,4 @@ async def new_message(
         db: Database = Depends(db_dependency),
         current_user: User = Depends(auth_dependency)
 ) -> Response:
-    await AIService(db=db, current_user=current_user).create_new_message(chat_id=chat_id, value=body, company_name=company_name, model_name=model_name)
+    return await AIService(db=db, current_user=current_user).create_new_message(chat_id=chat_id, value=body, company_name=company_name, model_name=model_name)

@@ -83,7 +83,7 @@ async def raw_sql_scripts_init(engine: AsyncEngine):
                                     IF (NEW.is_main = true) THEN
                                         UPDATE {MessageData.__tablename__}
                                         SET is_main = false
-                                        WHERE message_data_id <> NEW.message_data_id;
+                                        WHERE message_id = NEW.message_id AND message_data_id <> NEW.message_data_id;
                                     END IF;
 
                                     RETURN NEW;

@@ -1,8 +1,11 @@
+import pprint
 from typing import List, Union, Optional
 
+import aiohttp
 from sqlalchemy import insert, select, update
 
-from services.ai_service.core.db_models import Chat, Message, MessageData, MessageDataXFile, File, FileXCompany
+from services.ai_service.core.db_models import Chat, Message, MessageData, MessageDataXFile, File, FileXCompany, \
+    UserBalance
 from services.ai_service.core.schemas.chat_dto import ChatCreateUpdate, MessageDataRead, MessageDataCreateUpdate
 from services.ai_service.core.services import BaseService
 from services.ai_service.core.settings import settings
@@ -14,8 +17,8 @@ from shared.exceptions.exceptions import CustomException
 class AIService(BaseService):
 
     default_system_prompts = {
-        "ru": "Ты чат-бот помощник, который все силы прилагает, чтобы решить вопрос пользователя",
-        "en": "You are chat-bot helper, who do everything you can for solving user problems"
+        "ru": "Ты чат-бот помощник, который все силы прилагает, чтобы решить вопрос пользователя, ты отвечаешь кратко",
+        "en": "You are chat-bot helper, who do everything you can for solving user problems, your responses are short"
     }
 
     models_settings = {
@@ -30,6 +33,11 @@ class AIService(BaseService):
     }
 
     available_languages = ["ru", "en"]
+
+    type_cast = {
+        "int": int,
+        "str": str
+    }
 
     def __init__(self, db: Database = None, current_user: User = None):
         super(AIService, self).__init__(db=db, current_user=current_user)
@@ -178,11 +186,11 @@ class AIService(BaseService):
             WHERE chat.chat_id = :chat_id AND chat.delete_timestamp IS NULL
             GROUP BY chat.chat_id, chat.user_id, chat.create_timestamp, chat.language
         """
-
         result = await self.db.query(query=query, db_name=settings.ai_db_settings.name, params={"chat_id": chat_id})
         return result[0]["data"]
 
-    async def create_new_message(self, chat_id: int, value: MessageDataCreateUpdate, company_name: str, model_name: str):
+    # todo: better code structure, wrap in sub-functions
+    async def create_new_message(self, chat_id: int, value: MessageDataCreateUpdate, company_name: str, model_name: str) -> dict[str, Union[str, int]]:
         company_name, model_name = company_name.strip().lower(), model_name.strip().lower()
         if company_name not in self.models_settings.keys():
             raise CustomException(status_code=400, detail="Invalid company name")
@@ -193,12 +201,83 @@ class AIService(BaseService):
         previous_messages = []
         for message in chat_history["messages"]:
             if company_name == "gigachat":
+                current_attachments = []
+                for file in message["message_data"][0]["attachments"]:
+                    file_flag = False
+                    for company_file in file["company_file"]:
+                        if company_file["company_name"] == company_name:
+                            current_attachments.append(self.type_cast[company_file["id_type"]](company_file["file_company_id"]))
+                            file_flag = True
+                    if not file_flag:
+                        # todo upload to company
+                        pass
                 previous_messages.append({
                     "role": self.models_settings[company_name]["roles"]["user"] if message["sender"] == "user" else self.models_settings[company_name]["roles"]["assistant"],
-                    "content": message["text"]
+                    "content": message["message_data"][0]["text"],
+                    "attachments": current_attachments
                 })
             else:
                 raise CustomException(status_code=400, detail="Company currently not supported")
-        print(chat_history)
 
-        pass
+        request_body = {}
+        if company_name == "gigachat":
+            url = settings.api_settings.gigachat.completions_url
+            previous_messages.insert(0, {
+                "role": self.models_settings[company_name]["roles"]["system"],
+                "content": self.default_system_prompts[chat_history["chat_data"]["language"]],
+            })
+            previous_messages.append(
+                {
+                    "role": self.models_settings[company_name]["roles"]["user"],
+                    "content": value.message_data
+                }
+            )
+            request_body["model"] = model_name
+            request_body["messages"] = previous_messages
+        else:
+            raise CustomException(status_code=400, detail="Company currently not supported")
+
+        async with aiohttp.ClientSession() as session:
+            async with session.post(
+                url=url,
+                json=request_body,
+                headers={"Authorization": f"Bearer {settings.api_settings.gigachat.access_token}"},
+                ssl=False
+            ) as resp:
+                if resp.status == 200:
+                    json_response = await resp.json()
+                    print(json_response)
+                    response_message = json_response["choices"][0]["message"]["content"]
+                    tokens_consumed = json_response["usage"]["total_tokens"]
+                    stmt = insert(Message).values([
+                        {
+                            "company_name": None,
+                            "sender": "user",
+                            "chat_id": chat_id,
+                        },
+                        {
+                            "company_name": company_name,
+                            "sender": "assistant",
+                            "chat_id": chat_id,
+                        }
+                    ]).returning(Message)
+                    result_message = [x["Message"] for x in (await (await self.db.sessions)[settings.ai_db_settings.name].execute(stmt)).mappings().all()]
+                    stmt = insert(MessageData).values(
+                        [
+                            {
+                                "message_id": result_message[0].message_id,
+                                "text": value.message_data,
+                                "is_main": True
+                            },
+                            {
+                                "message_id": result_message[1].message_id,
+                                "text": response_message,
+                                "is_main": True
+                            }
+                        ]
+                    )
+                    await ((await self.db.sessions)[settings.ai_db_settings.name].execute(stmt))
+
+                else:
+                    raise CustomException(status_code=400, detail=f"{company_name} not working")
+        return {"message": response_message, "total_tokens": tokens_consumed}
