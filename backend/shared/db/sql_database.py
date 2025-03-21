@@ -85,8 +85,9 @@ class Database:
         self.__sessions: dict[str, tp.Optional[DataBaseSession]] = {}
         self.__engines_params = {}
         for engine_params in engines_params:
-            name = engine_params.pop("name")
-            self.__engines_params[name] = engine_params
+            engine_params_ = copy.deepcopy(engine_params)
+            name = engine_params_.pop("name")
+            self.__engines_params[name] = engine_params_
 
     @property
     async def sessions(self) -> dict[str, tp.Optional[DataBaseSession]]:
