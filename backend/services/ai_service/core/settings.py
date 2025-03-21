@@ -58,6 +58,7 @@ class AuthServiceSettings(BaseSettings):
 
 class MinioSetting(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="AI_MINIO_", extra="ignore")
+    name: str
     ROOT_USER: str
     ROOT_PASSWORD: str
     PORT_HOST_1: int
