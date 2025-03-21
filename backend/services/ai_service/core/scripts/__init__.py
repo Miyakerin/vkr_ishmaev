@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncEngine
 
 from shared.db.sql_database import Database
 from ..db_models import MyBase, Chat, Message, MessageData, MessageDataXFile
-from ..settings import settings, Settings, GigachatSettings
+from ..settings import settings
 
 
 async def init():
@@ -128,7 +128,6 @@ async def refresh_api_tokens_n_minutes(minutes: int = 15, max_errors=10):
 
 
 async def get_public_key():
-    global settings
     async with aiohttp.ClientSession() as session:
         try:
             async with session.get(f"{settings.auth_service_settings.url}/api/v1/jwk") as resp:
@@ -138,7 +137,6 @@ async def get_public_key():
 
 
 async def refresh_gigachat():
-    global settings
     async with aiohttp.ClientSession() as session:
         try:
             async with session.post(
