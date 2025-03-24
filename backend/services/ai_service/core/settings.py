@@ -59,16 +59,19 @@ class AuthServiceSettings(BaseSettings):
 class MinioSetting(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="AI_MINIO_", extra="ignore")
     name: str
-    ROOT_USER: str
-    ROOT_PASSWORD: str
-    PORT_HOST_1: int
-    PORT_HOST_2: int
+    host: str
+    access_key: str
+    secret_key: str
+    port_host_1: int
+    port_container_1: int
     url: tp.Optional[str] = None
 
     @model_validator(mode='after')
     def set_uri(self) -> tp.Self:
         if self.url is None:
-            self.url = f""
+            self.url = f"http://{self.host}:{self.port_host_1}"
+        else:
+            self.url = f"http://{self.host}:{self.port_container_1}"
         return self
 
 
@@ -115,6 +118,14 @@ class Settings(BaseSettings):
             "echo": ai_db_settings.echo,
             "pool_size": ai_db_settings.pool_size,
             "max_overflow": ai_db_settings.max_overflow
+        }
+    ]
+    all_s3: tp.List[tp.Dict[str, tp.Union[str, int, bool]]] = [
+        {
+            "name": minio_settings.name,
+            "s3_uri": minio_settings.url,
+            "s3_access_key": minio_settings.access_key,
+            "s3_secret_key": minio_settings.secret_key
         }
     ]
 

@@ -57,11 +57,11 @@ services:
       - ai-minio
     entrypoint: >
       /bin/sh -c "
-      echo ${AI_MINIO_ROOT_USER};
-      echo ${AI_MINIO_ROOT_PASSWORD};
       /usr/bin/mc config host add myminio http://${AI_MINIO_NAME}:${AI_MINIO_PORT_CONTAINER_1}/ ${AI_MINIO_ROOT_USER} ${AI_MINIO_ROOT_PASSWORD};
       /usr/bin/mc admin user add myminio ${AI_MINIO_ACCESS_KEY} ${AI_MINIO_SECRET_KEY};
       /usr/bin/mc admin policy attach myminio readwrite --user=${AI_MINIO_ACCESS_KEY};
+      /usr/bin/mc mb myminio/private;
+      /usr/bin/mc policy set public myminio/private;
       exit 0;
       "
     networks:
@@ -112,6 +112,7 @@ services:
       - .env
     environment:
       - AI_DB_HOST=${AI_DB_NAME}
+      - AI_MINIO_HOST=${AI_MINIO_NAME}
       - AUTH_SERVICE_HOST=${AUTH_SERVICE_NAME}
       - AI_SERVICE_HOST=${AI_SERVICE_NAME}
     ports:

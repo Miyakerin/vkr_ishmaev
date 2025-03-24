@@ -3,8 +3,17 @@ from fastapi import Depends, Security, HTTPException
 from fastapi.security import APIKeyHeader
 from starlette import status
 
+from shared.db.s3 import S3Database
 from shared.db.sql_database import Database
 import typing as tp
+
+
+class S3Dependency:
+    def __init__(self, s3_params: list[dict[str, tp.Union[int, str, bool]]]):
+        self.s3 = S3Database(s3_params=s3_params)
+
+    async def __call__(self) -> S3Database:
+        yield self.s3
 
 
 class DbDependency:

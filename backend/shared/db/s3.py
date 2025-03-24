@@ -6,7 +6,7 @@ import typing as tp
 import uuid
 
 import aioboto3
-from aiohttp import ClientError
+from botocore.exceptions import ClientError
 from fastapi import UploadFile
 
 
@@ -50,7 +50,7 @@ class S3Session:
 
 
 class S3Database:
-    """Класс для кэширования сессий aioboto (GalileoS3Session)
+    """Класс для кэширования сессий aioboto
     """
 
     def __init__(self, s3_params: list[dict[str, tp.Union[int, str, bool]]]):
@@ -65,9 +65,9 @@ class S3Database:
         if not self.__sessions:
             for s3_name, s3_param in self.__s3_params.items():
                 self.__sessions[s3_name] = S3Session(
-                    s3_access_key=s3_param["access_key"],
-                    s3_secret_key=s3_param["secret_key"],
-                    s3_uri=s3_param["uri"]
+                    s3_access_key=s3_param["s3_access_key"],
+                    s3_secret_key=s3_param["s3_secret_key"],
+                    s3_uri=s3_param["s3_uri"]
                 )
         return self.__sessions
 
