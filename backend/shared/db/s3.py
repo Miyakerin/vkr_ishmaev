@@ -1,4 +1,5 @@
 import base64
+import copy
 import io
 import mimetypes
 import os
@@ -56,9 +57,11 @@ class S3Database:
     def __init__(self, s3_params: list[dict[str, tp.Union[int, str, bool]]]):
         self.__sessions: dict[str, tp.Optional[S3Session]] = {}
         self.__s3_params = {}
+
         for s3_param in s3_params:
-            name = s3_param.pop("name")
-            self.__s3_params[name] = s3_param
+            s3_param_ = copy.deepcopy(s3_param)
+            name = s3_param_.pop("name")
+            self.__s3_params[name] = s3_param_
 
     @property
     def sessions(self) -> dict[str, tp.Optional[S3Session]]:

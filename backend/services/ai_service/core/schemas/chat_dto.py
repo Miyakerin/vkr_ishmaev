@@ -17,6 +17,10 @@ class ChatRead(BaseDTO):
     create_timestamp: datetime
 
 
+class ChatsRead(BaseDTO):
+    items: tp.List[ChatRead]
+
+
 class MessageDataCreateUpdate(BaseDTO):
     message_data: str
 

@@ -10,6 +10,7 @@ from services.ai_service.core.schemas.chat_dto import ChatCreateUpdate, MessageD
 from services.ai_service.core.services import BaseService
 from services.ai_service.core.services.file_service import FileService
 from services.ai_service.core.settings import settings
+from shared.db.s3 import S3Database
 from shared.db.sql_database import Database
 from shared.dependencies import User
 from shared.exceptions.exceptions import CustomException
@@ -40,8 +41,8 @@ class AIService(BaseService):
         "STRING": str
     }
 
-    def __init__(self, db: Database = None, current_user: User = None):
-        super(AIService, self).__init__(db=db, current_user=current_user)
+    def __init__(self, db: Database = None, current_user: User = None, s3: S3Database = None):
+        super(AIService, self).__init__(db=db, current_user=current_user, s3=s3)
 
     async def create_chat(self, value: ChatCreateUpdate):
         result = await self.create_chats(values=[value])
@@ -75,8 +76,7 @@ class AIService(BaseService):
             self,
             user_ids: Optional[Union[List[int], int]] = None,
             chat_ids: Optional[Union[List[int], int]] = None,
-            existing: Optional[bool] = True,
-
+            existing: Optional[bool] = True
     ) -> List[Chat]:
         stmt = select(Chat)
         if user_ids is not None:
@@ -91,6 +91,7 @@ class AIService(BaseService):
             stmt = stmt.where(Chat.delete_timestamp == None)
         elif existing is False:
             stmt = stmt.where(Chat.delete_timestamp != None)
+        result = await (await self.db.sessions)[settings.ai_db_settings.name].execute(stmt)
         result = [x["Chat"] for x in (await (await self.db.sessions)[settings.ai_db_settings.name].execute(stmt)).mappings().all()]
         return result
 
@@ -172,7 +173,7 @@ class AIService(BaseService):
                             ON file_company.file_id = file.file_id AND file_company.delete_timestamp IS NULL
                             
                         WHERE attachment.delete_timestamp IS NULL
-                        GROUP BY attachment.message_data_x_file_id, attachment.file_id, attachment.create_timestamp, file.filename, file.s3_key, file.bucket_name, file.create_timestamp
+                        GROUP BY attachment.message_data_x_file_id, attachment.file_id, attachment.create_timestamp, file.filename, file.s3_key, file.bucket_name, file.file_size, file.create_timestamp
                     ) as attachment
                         ON attachment.message_data_id = message_data.message_data_id
                     
@@ -183,6 +184,7 @@ class AIService(BaseService):
                     
                 WHERE message.delete_timestamp IS NULL
                 GROUP BY message.message_id, message.company_name, message.sender, message.create_timestamp
+                ORDER BY message.message_id
             ) as message
                 ON message.chat_id = chat.chat_id
             WHERE chat.chat_id = :chat_id AND chat.delete_timestamp IS NULL

@@ -31,5 +31,5 @@ class BaseService:
     @property
     def s3(self) -> S3Database:
         if not self.__s3:
-            raise HTTPException(status_code=404, detail='Database not provided')
+            raise HTTPException(status_code=404, detail='s3 Database not provided')
         return self.__s3
