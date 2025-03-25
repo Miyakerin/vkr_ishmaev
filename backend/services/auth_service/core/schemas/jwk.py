@@ -9,4 +9,4 @@ class JWKRead(BaseDTO):
 
 
 class JWTToken(BaseDTO):
-    token: str
+    access_token: str

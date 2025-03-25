@@ -29,7 +29,7 @@ async def login(
     return Response(
         status_code=status.HTTP_200_OK,
         content=JWTToken.model_validate(
-            {"access_token": result},
+            {"access_token": result.decode("UTF-8")},
             from_attributes=True
         ).model_dump_json(),
         headers={"content-type": "application/json"}
@@ -52,6 +52,13 @@ async def register(
     )
 
 
+@user_router.post("/verify", response_model=None, status_code=status.HTTP_200_OK)
+async def verify(
+    current_user: User = Depends(auth_dependency),
+) -> Response:
+    return Response("ok", status_code=status.HTTP_200_OK)
+
+
 @user_router.get("/{user_id}", response_model=None, status_code=status.HTTP_200_OK)
 async def get_user(
         user_id: int,
@@ -71,3 +78,6 @@ async def get_user(
             ).model_dump_json()
         )
     raise CustomException(status_code=status.HTTP_401_UNAUTHORIZED)
+
+
+

@@ -71,6 +71,8 @@ class UserService(BaseService):
         return result
 
     async def login_user(self, username: str, password: str, email: str) -> User:
+        if username is None and email is None:
+            raise ex.CustomException(status_code=400, detail="Username or email is required")
         if username:
             stmt = (
                 select(User)

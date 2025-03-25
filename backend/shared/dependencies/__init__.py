@@ -63,5 +63,8 @@ class AuthDependency:
     async def __call__(self, token: str = Security(token_header)) -> User:
         if not token:
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
+        if "Bearer " in token:
+            token = token.replace("Bearer ", "")
+
         claims = jwt.decode(token, key=self.public_jwk)
         return User(claims['user_id'], claims['is_admin'])
