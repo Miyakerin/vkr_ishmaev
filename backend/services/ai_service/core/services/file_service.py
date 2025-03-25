@@ -1,6 +1,6 @@
 import pprint
 from io import BytesIO
-from typing import List, Union, Optional
+from typing import List, Union, Optional, Any
 
 import aiohttp
 from aiohttp import FormData
@@ -142,7 +142,7 @@ class FileService(BaseService):
         result = [x["FileXCompany"] for x in result.mappings().all()]
         return result
 
-    async def upload_file_to_company(self, file_id: int, company_name: str) -> None:
+    async def upload_file_to_company(self, file_id: int, company_name: str) -> Any:
         company_name = company_name.strip().lower()
         if company_name not in self.available_companies:
             raise CustomException(status_code=404, detail="Company not found")
@@ -186,6 +186,6 @@ class FileService(BaseService):
             id_type=id_type
         )
         await (await self.db.sessions)[settings.ai_db_settings.name].execute(stmt)
-        return None
+        return file_company_id
 
 

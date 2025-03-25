@@ -8,6 +8,7 @@ from services.ai_service.core.db_models import Chat, Message, MessageData, Messa
     UserBalance
 from services.ai_service.core.schemas.chat_dto import ChatCreateUpdate, MessageDataRead, MessageDataCreateUpdate
 from services.ai_service.core.services import BaseService
+from services.ai_service.core.services.file_service import FileService
 from services.ai_service.core.settings import settings
 from shared.db.sql_database import Database
 from shared.dependencies import User
@@ -35,8 +36,8 @@ class AIService(BaseService):
     available_languages = ["ru", "en"]
 
     type_cast = {
-        "int": int,
-        "str": str
+        "INTEGER": int,
+        "STRING": str
     }
 
     def __init__(self, db: Database = None, current_user: User = None):
@@ -152,6 +153,7 @@ class AIService(BaseService):
                             'filename', file.filename,
                             's3_key', file.s3_key,
                             'bucket_name', file.bucket_name,
+                            'file_size', file.file_size,
                             'file_create_timestamp', file.create_timestamp,
                             'company_file', json_agg_strict(json_build_object(
                                 'file_x_company_id', file_company.file_x_company_id,
@@ -192,6 +194,7 @@ class AIService(BaseService):
     # todo: better code structure, wrap in sub-functions
     async def create_new_message(self, chat_id: int, value: MessageDataCreateUpdate, company_name: str, model_name: str) -> dict[str, Union[str, int]]:
         company_name, model_name = company_name.strip().lower(), model_name.strip().lower()
+        file_service = FileService(current_user=self.current_user, db=self.db, s3=self.s3)
         if company_name not in self.models_settings.keys():
             raise CustomException(status_code=400, detail="Invalid company name")
         if model_name not in self.models_settings[company_name]["models"]:
@@ -199,6 +202,7 @@ class AIService(BaseService):
         current_chat = await self.get_chat(chat_id=chat_id)
         chat_history = await self.get_chat_history(chat_id=chat_id, bypass=True, only_main=True)
         previous_messages = []
+        total_files_size = 0
         for message in chat_history["messages"]:
             if company_name == self.gigachat:
                 current_attachments = []
@@ -209,8 +213,10 @@ class AIService(BaseService):
                             current_attachments.append(self.type_cast[company_file["id_type"]](company_file["file_company_id"]))
                             file_flag = True
                     if not file_flag:
-                        # todo upload to company
-                        pass
+                        current_attachments.append(await file_service.upload_file_to_company(file_id=file["file_id"], company_name=self.gigachat))
+                    total_files_size += file["file_size"]
+                    if total_files_size > 15728640:
+                        raise CustomException(status_code=400, detail="Chat history too large")
                 previous_messages.append({
                     "role": self.models_settings[company_name]["roles"]["user"] if message["sender"] == "user" else self.models_settings[company_name]["roles"]["assistant"],
                     "content": message["message_data"][0]["text"],
