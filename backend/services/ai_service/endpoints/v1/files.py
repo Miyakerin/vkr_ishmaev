@@ -47,3 +47,15 @@ async def get_download_url(
         headers={"Content-Type": "application/json"}
     )
 
+
+@file_router.post("/{file_id}/{company_name}", response_model=None, status_code=status.HTTP_200_OK)
+async def upload_to_company(
+        file_id: int,
+        company_name: str,
+        current_user: User = Depends(auth_dependency),
+        db: Database=Depends(db_dependency),
+        s3: S3Database=Depends(s3_dependency)
+):
+    result = await FileService(current_user=current_user, db=db, s3=s3).upload_file_to_company(file_id=file_id, company_name=company_name)
+    return result
+

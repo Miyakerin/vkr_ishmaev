@@ -200,7 +200,7 @@ class AIService(BaseService):
         chat_history = await self.get_chat_history(chat_id=chat_id, bypass=True, only_main=True)
         previous_messages = []
         for message in chat_history["messages"]:
-            if company_name == "gigachat":
+            if company_name == self.gigachat:
                 current_attachments = []
                 for file in message["message_data"][0]["attachments"]:
                     file_flag = False
@@ -220,7 +220,7 @@ class AIService(BaseService):
                 raise CustomException(status_code=400, detail="Company currently not supported")
 
         request_body = {}
-        if company_name == "gigachat":
+        if company_name == self.gigachat:
             url = settings.api_settings.gigachat.completions_url
             previous_messages.insert(0, {
                 "role": self.models_settings[company_name]["roles"]["system"],
@@ -246,7 +246,6 @@ class AIService(BaseService):
             ) as resp:
                 if resp.status == 200:
                     json_response = await resp.json()
-                    print(json_response)
                     response_message = json_response["choices"][0]["message"]["content"]
                     tokens_consumed = json_response["usage"]["total_tokens"]
                     stmt = insert(Message).values([

@@ -6,7 +6,10 @@ from shared.dependencies import User
 
 
 class BaseService:
-    available_companies = ["gigachat", "openani", "deepseek"]
+    gigachat = "gigachat"
+    openai = "openai"
+    deepseek = "deepseek"
+    available_companies = [gigachat, openai, deepseek]
 
     def __init__(self, db: Database = None, current_user: User = None, s3: S3Database = None):
         self.__db = db

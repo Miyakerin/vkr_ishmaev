@@ -71,6 +71,7 @@ class File(MyBase):
     s3_key: Mapped[str] = mapped_column("s3_key", String(256), nullable=False)
     bucket_name: Mapped[str] = mapped_column("bucket_name", String(256), nullable=False)
     file_size: Mapped[str] = mapped_column("file_size", Integer, nullable=False) # file size in bytes
+    mimetype: Mapped[str] = mapped_column("mimetype", String(256), nullable=False)
     user_id: Mapped[int] = mapped_column("user_id", Integer, nullable=False)
     create_timestamp: Mapped[datetime] = mapped_column("create_timestamp", DateTime(timezone=False), nullable=False,
                                                        default=datetime.now())

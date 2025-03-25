@@ -88,6 +88,7 @@ class GigachatSettings(BaseSettings):
     auth_url: str = "https://ngw.devices.sberbank.ru:9443/api/v2/oauth"
     models_list_url: str = "https://gigachat.devices.sberbank.ru/api/v1/models"
     completions_url: str = "https://gigachat.devices.sberbank.ru/api/v1/chat/completions"
+    file_upload_url: str = "https://gigachat.devices.sberbank.ru/api/v1/files"
     access_token: tp.Optional[str] = None
     key: tp.Optional[str] = None
 
