@@ -33,6 +33,24 @@ async def create_file(
     )
 
 
+@file_router.post("/company/{company_name}", response_model=FileRead, status_code=status.HTTP_201_CREATED)
+async def create_file_post_company(
+        company_name: str,
+        file: UploadFile = File(...),
+        current_user: User = Depends(auth_dependency),
+        db: Database=Depends(db_dependency),
+        s3: S3Database=Depends(s3_dependency)
+) -> Response:
+    file_service = FileService(current_user=current_user, db=db, s3=s3)
+    file_result = await file_service.upload_file(file)
+    await file_service.upload_file_to_company(file_id=file_result, company_name=company_name)
+    return Response(
+        status_code=status.HTTP_201_CREATED,
+        content=FileRead.model_validate(file_result, from_attributes=True).model_dump_json(),
+        headers={"Content-Type": "application/json"}
+    )
+
+
 @file_router.get("/{file_id}", response_model=None, status_code=status.HTTP_200_OK)
 async def get_download_url(
         file_id: int,
@@ -48,7 +66,7 @@ async def get_download_url(
     )
 
 
-@file_router.post("/{file_id}/{company_name}", response_model=None, status_code=status.HTTP_200_OK)
+@file_router.post("/{file_id}/company/{company_name}", response_model=None, status_code=status.HTTP_200_OK)
 async def upload_to_company(
         file_id: int,
         company_name: str,
