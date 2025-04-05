@@ -1,110 +1,70 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import config from '../config/authConfig';
+import endpointsConfig from '../config/endpointsConfig';
+import axios from "axios";
+import { Box, Button, Input, Heading, Text, Link } from '@chakra-ui/react';
+import api from "../api";
 
 function LoginPage() {
-    const [email, setEmail] = useState('');
     const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
     const navigate = useNavigate();
 
-    useEffect(() => {
-        const checkAutoLogin = async () => {
-            const accessToken = localStorage.getItem('access_token');
-            if (accessToken) {
-                try {
-                    const response = await fetch(`${config.apiBaseUrl}${config.verifyEndpoint}`, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'Authorization': `Bearer ${accessToken}`
-                        }
-                    });
-
-                    if (response.ok) {
-                        navigate('/dashboard'); // Перенаправляем на главную страницу если токен валиден
-                    } else {
-                        // Если токен невалиден - очищаем его
-                        localStorage.removeItem('access_token');
-                    }
-                } catch (error) {
-                    console.error('Ошибка проверки токена:', error);
-                    localStorage.removeItem('access_token');
-                }
-            }
-        };
-
-        checkAutoLogin();
-    }, [navigate]);
-
-    const handleLogin = async (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
         try {
-            const response = await fetch(`${config.apiBaseUrl}${config.loginEndpoint}`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({password, username })
-            });
-
-            if (response.ok) {
-                const data = await response.json();
-                localStorage.setItem('access_token', data.access_token);
-                navigate('/dashboard');
-            } else {
-                alert('Ошибка входа');
-            }
+            const response = await api.post(
+                `${endpointsConfig.loginEndpoint}`,
+                {password, username}
+            );
+            localStorage.setItem('access_token', response.data.access_token);
+            axios.defaults.headers.common["Authorization"] = `Bearer ${response.data.access_token}`;
+            navigate('/chats');
         } catch (error) {
-            console.error('Ошибка:', error);
-            alert('Не удалось выполнить вход');
+            alert('Ошибка входа');
         }
-    };
+    }
 
     return (
-        <div className="min-h-screen flex items-center justify-center bg-gray-100">
-            <div className="bg-white p-8 rounded shadow-md w-96">
-                <h2 className="text-2xl mb-4 text-center">Вход</h2>
-                <form onSubmit={handleLogin}>
-                    <div className="mb-4">
-                        <label className="block mb-2">Username</label>
-                        <input
-                            type="username"
-                            value={username}
-                            onChange={(e) => setUsername(e.target.value)}
-                            className="w-full px-3 py-2 border rounded"
-                            required
-                        />
-                    </div>
-                    <div className="mb-4">
-                        <label className="block mb-2">Пароль</label>
-                        <input
-                            type="password"
-                            value={password}
-                            onChange={(e) => setPassword(e.target.value)}
-                            className="w-full px-3 py-2 border rounded"
-                            required
-                        />
-                    </div>
-                    <button
-                        type="submit"
-                        className="w-full bg-blue-500 text-white py-2 rounded hover:bg-blue-600"
-                    >
+        <Box bg="gray.900" minH="100vh" display="flex" alignItems="center" justifyContent="center">
+            <Box bg="gray.800" p={8} borderRadius="lg" width="96">
+                <Heading size="lg" color="white" mb={6}>
+                    Вход
+                </Heading>
+                <form onSubmit={handleSubmit}>
+                    <Input
+                        type="username"
+                        placeholder="Username"
+                        value={username}
+                        onChange={(e) => setUsername(e.target.value)}
+                        mb={4}
+                        bg="gray.700"
+                        color="white"
+                        required
+                    />
+                    <Input
+                        type="password"
+                        placeholder="Пароль"
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        mb={6}
+                        bg="gray.700"
+                        color="white"
+                        required
+                    />
+                    <Button type="submit" colorScheme="blue" width="full">
                         Войти
-                    </button>
+                    </Button>
                 </form>
-                <p className="mt-4 text-center">
-                    Нет аккаунта?
-                    <button
-                        onClick={() => navigate('/register')}
-                        className="text-blue-500 ml-1"
-                    >
+                <Text mt={4} color="gray.400">
+                    Нет аккаунта?{' '}
+                    <Link href="/register" color="blue.400">
                         Зарегистрироваться
-                    </button>
-                </p>
-            </div>
-        </div>
+                    </Link>
+                </Text>
+            </Box>
+        </Box>
     );
-}
+};
 
 export default LoginPage;
