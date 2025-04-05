@@ -1,7 +1,6 @@
 import LoginPage from "./pages/LoginPage";
 import RegisterPage from "./pages/RegisterPage";
-import ChatListPage from "./pages/ChatListPage";
-import ChatPage from "./pages/ChatPage";
+import ChatsPage  from "./pages/ChatsPage";
 
 
 
@@ -10,7 +9,6 @@ import {BrowserRouter as Router, Routes, Route, useNavigate, useLocation} from '
 import api from './api';
 import {ChakraProvider} from "@chakra-ui/react";
 import {QueryClient, QueryClientProvider} from "react-query";
-import NewChatPage from "./pages/NewChatPage";
 
 const AuthWrapper = ({ children }) => {
     const navigate = useNavigate();
@@ -40,9 +38,7 @@ function App() {
                             <Routes>
                                 <Route path="/login" element={<LoginPage />} />
                                 <Route path="/register" element={<RegisterPage />} />
-                                <Route path="/chats" element={<ChatListPage />} />
-                                <Route path="/chats/new" element={<NewChatPage />} />
-                                <Route path="/chats/:id" element={<ChatPage />} />
+                                <Route path="/chats" element={<ChatsPage  />} />
                                 <Route path="*" element={<LoginPage />} /> {/* Дефолтный редирект */}
                             </Routes>
                         </AuthWrapper>

@@ -6,7 +6,9 @@ const endpointsConfig = {
 
     getUserChatsEndpoint: '/api/ai/v1/chat',
     createChatEndpoint: '/api/ai/v1/chat',
-    getChatHistory: '/api/ai/v1/chat/{chat_id}/history',
+    getChatHistory: '/api/ai/v1/chat/:chat_id/history',
+
+    sendMessageEndpoint: 'api/ai/v1/chat/:chat_id/message',
 };
 
 export default endpointsConfig;

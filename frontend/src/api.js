@@ -11,9 +11,11 @@ api.interceptors.request.use((config) => {
     if (token) {
         config.headers.Authorization = `Bearer ${token}`;
     }
+    console.log("1")
     if (!config.url) {
         return config;
     }
+    console.log(2)
     const currentUrl = new URL(config.url, config.baseURL);
     Object.entries(config.urlParams || {}).forEach(([
         k,
@@ -21,8 +23,13 @@ api.interceptors.request.use((config) => {
     ]) => {
         currentUrl.pathname = currentUrl.pathname.replace(`:${k}`, encodeURIComponent(v));
     });
+    console.log(currentUrl.pathname, config.urlParams)
 
-    return config;
+    return {
+        ...config,
+        baseUrl: config.baseURL,
+        url: currentUrl.pathname,
+    };
 });
 
 export default api;
