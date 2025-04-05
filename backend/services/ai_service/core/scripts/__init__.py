@@ -130,7 +130,7 @@ async def refresh_api_tokens_n_minutes(minutes: int = 15, max_errors=10):
 async def get_public_key():
     async with aiohttp.ClientSession() as session:
         try:
-            async with session.get(f"{settings.auth_service_settings.url}/api/v1/jwk") as resp:
+            async with session.get(f"{settings.auth_service_settings.url}/v1/jwk") as resp:
                 settings.auth_key = JsonWebKey.import_key(await resp.json())
         except Exception:
             settings.auth_key = None

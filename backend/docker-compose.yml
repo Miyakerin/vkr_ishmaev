@@ -125,11 +125,55 @@ services:
     networks:
       - network
 
+#  certbot:
+#    image: certbot/certbot:latest
+#    depends_on:
+#      - nginx
+#    container_name: certbot
+#    volumes:
+#      - etc-letsencrypt:/etc/letsencrypt
+#      - www-html:/var/www/html
+#    networks:
+#      - network
+
+#  nginx:
+#    container_name: nginx
+#    image: nginx:stable-alpine3.19-perl
+#    tty: true
+#    ports:
+#      - "80:80"
+#      - "443:443"
+#    volumes:
+#      - ./services/nginx/nginx-conf/:/etc/nginx/conf.d/:ro
+#      - www-html:/var/www/html
+#      - etc-letsencrypt:/etc/letsencrypt
+#      - ./services/nginx/static-content:/usr/share/nginx/html
+#    restart: always
+#    networks:
+#      - network
+
+  nginx_dev:
+    container_name: nginx_dev
+    image: nginx:stable-alpine3.19-perl
+    tty: true
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./services/nginx/nginx-conf/default_dev_conf.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./services/nginx/static-content:/usr/share/nginx/html
+    restart: always
+    networks:
+      - network
+
 volumes:
   auth_db_data:
   auth_minio:
   ai_db_data:
   ai_minio:
+
+  etc-letsencrypt:
+  www-html:
 
 networks:
   network:
