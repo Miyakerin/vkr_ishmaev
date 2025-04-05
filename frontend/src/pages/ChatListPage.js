@@ -1,5 +1,5 @@
 import React from 'react';
-import { useQuery } from 'react-query';
+import { useQuery, useQueryClient, useMutation } from 'react-query';
 import api from '../api';
 import {
     Box,
@@ -11,14 +11,16 @@ import {
     Flex,
     Spinner,
     Badge,
-    useColorModeValue
+    useColorModeValue, useToast
 } from '@chakra-ui/react';
 import { Link as RouterLink, useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
 import endpointsConfig from "../config/endpointsConfig";
 
 const ChatListPage = () => {
+    const queryClient = useQueryClient();
     const navigate = useNavigate();
+    const toast = useToast();
     const bgColor = useColorModeValue('gray.100', 'gray.700');
     const hoverBgColor = useColorModeValue('gray.200', 'gray.600');
 

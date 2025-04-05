@@ -10,6 +10,7 @@ import {BrowserRouter as Router, Routes, Route, useNavigate, useLocation} from '
 import api from './api';
 import {ChakraProvider} from "@chakra-ui/react";
 import {QueryClient, QueryClientProvider} from "react-query";
+import NewChatPage from "./pages/NewChatPage";
 
 const AuthWrapper = ({ children }) => {
     const navigate = useNavigate();
@@ -21,7 +22,9 @@ const AuthWrapper = ({ children }) => {
             navigate('/login');
         } else {
             api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-            navigate('/chats')
+            if (location.pathname === '/login' || location.pathname === '/register') {
+                navigate('/chats')
+            }
         }
     }, [navigate]);
 
@@ -38,6 +41,7 @@ function App() {
                                 <Route path="/login" element={<LoginPage />} />
                                 <Route path="/register" element={<RegisterPage />} />
                                 <Route path="/chats" element={<ChatListPage />} />
+                                <Route path="/chats/new" element={<NewChatPage />} />
                                 <Route path="/chats/:id" element={<ChatPage />} />
                                 <Route path="*" element={<LoginPage />} /> {/* Дефолтный редирект */}
                             </Routes>
