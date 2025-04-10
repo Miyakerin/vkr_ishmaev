@@ -22,7 +22,6 @@ export const Layout = ({ children }) => {
 
     return (
         <Box height="100vh" bg={useColorModeValue('gray.50', 'gray.900')}>
-            {/* Компактная шапка с красной полосой снизу */}
             {!isAuthPage && (
                 <Flex
                     bg={bgColor}

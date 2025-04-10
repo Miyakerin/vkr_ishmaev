@@ -37,6 +37,7 @@ import {
 import {ArrowForwardIcon, AddIcon, SettingsIcon} from '@chakra-ui/icons';
 import api from '../api';
 import endpointsConfig from '../config/endpointsConfig';
+import {Layout} from "../components/Layout";
 
 const ChatsPage = () => {
     const [chats, setChats] = useState([]);
@@ -508,6 +509,7 @@ const ChatsPage = () => {
     };
 
     return (
+        <Layout>
         <Flex h="100vh" bg="gray.50">
             {/* Sidebar */}
             <Box w="300px" borderRight="1px" borderColor="gray.200" bg="white">
@@ -618,6 +620,7 @@ const ChatsPage = () => {
                 )}
             </Box>
         </Flex>
+        </Layout>
     );
 };
 
