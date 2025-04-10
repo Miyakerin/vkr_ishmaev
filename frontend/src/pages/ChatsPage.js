@@ -11,13 +11,15 @@ import {
     InputGroup,
     InputRightElement,
     IconButton,
-    Avatar,
+    Badge,
     Divider,
     Spinner,
     useToast,
     Stack,
     Tooltip,
-    Badge
+    Textarea,
+    FormControl,
+    FormLabel
 } from '@chakra-ui/react';
 import {ArrowForwardIcon, AddIcon, SettingsIcon} from '@chakra-ui/icons';
 import api from '../api';
@@ -25,6 +27,7 @@ import endpointsConfig from '../config/endpointsConfig';
 
 const ChatsPage = () => {
     const [chats, setChats] = useState([]);
+    const [models, setModels] = useState([]);
     const [selectedChat, setSelectedChat] = useState(null);
     const [chatHistory, setChatHistory] = useState(null);
     const [newMessage, setNewMessage] = useState('');
@@ -33,20 +36,20 @@ const ChatsPage = () => {
     const [selectedModel, setSelectedModel] = useState(1);
     const [showModelSelector, setShowModelSelector] = useState(false);
     const [newChatLanguage, setNewChatLanguage] = useState('ru');
+    const [systemMessage, setSystemMessage] = useState('Ты чат-бот помощник, который все силы прилагает, чтобы решить вопрос пользователя, ты отвечаешь кратко');
+    const [showAdvancedSettings, setShowAdvancedSettings] = useState(false);
     const navigate = useNavigate();
     const toast = useToast();
 
-    const availableModels = [
-        {
-            "id": 1,
-            "company_name": "gigachat",
-            "model_name": "gigachat"
-        }
-    ]
+
+    useEffect( () => {
+        fetchModels();
+    }, []);
 
     useEffect(() => {
         fetchChats();
     }, []);
+
 
     useEffect(() => {
         if (selectedChat) {
@@ -64,36 +67,75 @@ const ChatsPage = () => {
             borderRadius="md"
             boxShadow="lg"
             zIndex="dropdown"
-            width="250px"
+            width="300px"
             border="1px"
             borderColor="gray.200"
         >
-            <Text fontWeight="bold" mb="2">Выберите модель</Text>
+            <Flex justify="space-between" align="center" mb="3">
+                <Text fontWeight="bold">Настройки модели</Text>
+                <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => setShowAdvancedSettings(!showAdvancedSettings)}
+                >
+                    {showAdvancedSettings ? 'Скрыть' : 'Дополнительно'}
+                </Button>
+            </Flex>
+
             <Stack spacing="3">
-                {availableModels.map(model => (
-                    <Box
-                        key={model.id}
-                        p="2"
-                        borderRadius="md"
-                        bg={selectedModel === model.id ? 'blue.50' : 'transparent'}
-                        border="1px"
-                        borderColor={selectedModel === model.id ? 'blue.200' : 'transparent'}
-                        cursor="pointer"
-                        onClick={() => {
-                            setSelectedModel(model.id);
-                            toast({
-                                title: `Модель изменена на ${model.model_name}`,
-                                status: 'info',
-                                duration: 2000,
-                                isClosable: true,
-                            });
-                            setShowModelSelector(false);
-                        }}
+                <Box>
+                    <Text fontSize="sm" fontWeight="medium" mb="1">Выберите модель</Text>
+                    <Select
+                        value={selectedModel}
+                        onChange={(e) => setSelectedModel(e.target.value)}
+                        size="sm"
                     >
-                        <Text fontWeight="medium">{model.model_name}</Text>
+                        {models.map(model => (
+                            <option key={model.id} value={model.id}>{model.model_name}</option>
+                        ))}
+                    </Select>
+                </Box>
+
+                {showAdvancedSettings && (
+                    <Box mt="2">
+                        <FormControl>
+                            <FormLabel fontSize="sm">System Message</FormLabel>
+                            <Textarea
+                                value={systemMessage}
+                                onChange={(e) => setSystemMessage(e.target.value)}
+                                placeholder="Задайте поведение модели..."
+                                size="sm"
+                                rows={3}
+                            />
+                            <Text fontSize="xs" color="gray.500" mt="1">
+                                Это сообщение будет влиять на поведение модели
+                            </Text>
+                        </FormControl>
                     </Box>
-                ))}
+                )}
             </Stack>
+
+            <Button
+                colorScheme="blue"
+                size="sm"
+                mt="3"
+                w="full"
+                onClick={() => {
+                    console.log('Применены настройки:', {
+                        model: selectedModel,
+                        systemMessage: systemMessage
+                    });
+                    setShowModelSelector(false);
+                    toast({
+                        title: 'Настройки применены',
+                        status: 'success',
+                        duration: 2000,
+                        isClosable: true,
+                    });
+                }}
+            >
+                Применить
+            </Button>
         </Box>
     );
 
@@ -125,7 +167,7 @@ const ChatsPage = () => {
                         />
                     </Tooltip>
                     <Badge colorScheme="purple" ml="2">
-                        {availableModels.find(m => m.id === selectedModel)?.name || 'Model'}
+                        {models.find(m => m.id === selectedModel)?.name || 'Model'}
                     </Badge>
                 </Flex>
             </Flex>
@@ -171,6 +213,21 @@ const ChatsPage = () => {
         }
     };
 
+    const fetchModels = async () => {
+      setIsLoading(true)
+      try {
+          const response = await api.get(endpointsConfig.modelsEndpoint);
+          setModels(response.data.items);
+          if (response.data.items.length > 0 && !selectedModel) {
+              setSelectedModel(response.data.items[0].id);
+          }
+      }  catch (error) {
+          handleApiError(error, 'Failed to load models')
+      } finally {
+          setIsLoading(false)
+      }
+    };
+
     const fetchMessages = async (chatId) => {
         setIsLoading(true);
         try {
@@ -207,13 +264,13 @@ const ChatsPage = () => {
 
     const handleSendMessage = async () => {
         if (!newMessage.trim() || !selectedChat) return;
-        const currentModel = availableModels.find(model => model.id === selectedModel);
+        const currentModel = models.find(model => model.id === selectedModel);
         setIsSending(true);
 
         try {
             // Отправляем сообщение
             await api.post(endpointsConfig.sendMessageEndpoint,
-                {message_data: newMessage},
+                {message_data: newMessage, system_message: systemMessage},
                 {
                     urlParams: {
                         'chat_id': selectedChat

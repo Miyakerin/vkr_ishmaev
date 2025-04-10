@@ -10,6 +10,20 @@ class BaseService:
     openai = "openai"
     deepseek = "deepseek"
     available_companies = [gigachat, openai, deepseek]
+    gigachat_models = ["gigachat"]
+    openai_models = []
+    deepseek_models = []
+    company_x_models = {gigachat: gigachat_models, openai: openai_models, deepseek: deepseek_models}
+    model_list = []
+    i = 0
+    for key, models in company_x_models.items():
+        for model in models:
+            model_list.append({
+                "id": i,
+                "company_name": key,
+                "model_name": model
+            })
+            i += 1
 
     def __init__(self, db: Database = None, current_user: User = None, s3: S3Database = None):
         self.__db = db

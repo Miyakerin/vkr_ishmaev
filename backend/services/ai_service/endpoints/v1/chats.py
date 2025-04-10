@@ -68,4 +68,10 @@ async def new_message(
         s3: S3Database = Depends(s3_dependency),
         current_user: User = Depends(auth_dependency)
 ) -> Response:
-    return await AIService(db=db, current_user=current_user, s3=s3).create_new_message(chat_id=chat_id, value=body, company_name=company_name, model_name=model_name)
+    return await (
+        AIService(db=db, current_user=current_user, s3=s3)
+        .create_new_message(
+            chat_id=chat_id, value=body,
+            company_name=company_name, model_name=model_name,
+            system_message=body.system_message)
+    )

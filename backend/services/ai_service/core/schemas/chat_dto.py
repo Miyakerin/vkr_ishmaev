@@ -23,6 +23,7 @@ class ChatsRead(BaseDTO):
 
 class MessageDataCreateUpdate(BaseDTO):
     message_data: str
+    system_message: tp.Optional[str] = None
 
 
 class MessageDataRead(BaseDTO):

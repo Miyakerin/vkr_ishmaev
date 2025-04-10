@@ -194,7 +194,7 @@ class AIService(BaseService):
         return result[0]["data"]
 
     # todo: better code structure, wrap in sub-functions
-    async def create_new_message(self, chat_id: int, value: MessageDataCreateUpdate, company_name: str, model_name: str) -> dict[str, Union[str, int]]:
+    async def create_new_message(self, chat_id: int, value: MessageDataCreateUpdate, company_name: str, model_name: str, system_message: Optional[str] = None) -> dict[str, Union[str, int]]:
         company_name, model_name = company_name.strip().lower(), model_name.strip().lower()
         file_service = FileService(current_user=self.current_user, db=self.db, s3=self.s3)
         if company_name not in self.models_settings.keys():
@@ -230,10 +230,16 @@ class AIService(BaseService):
         request_body = {}
         if company_name == self.gigachat:
             url = settings.api_settings.gigachat.completions_url
-            previous_messages.insert(0, {
-                "role": self.models_settings[company_name]["roles"]["system"],
-                "content": self.default_system_prompts[chat_history["chat_data"]["language"]],
-            })
+            if system_message is not None and system_message.strip() != "":
+                previous_messages.insert(0, {
+                    "role": self.models_settings[company_name]["roles"]["system"],
+                    "content": system_message,
+                })
+            else:
+                previous_messages.insert(0, {
+                    "role": self.models_settings[company_name]["roles"]["system"],
+                    "content": self.default_system_prompts[chat_history["chat_data"]["language"]],
+                })
             previous_messages.append(
                 {
                     "role": self.models_settings[company_name]["roles"]["user"],
@@ -288,3 +294,6 @@ class AIService(BaseService):
                 else:
                     raise CustomException(status_code=400, detail=f"{company_name} not working")
         return {"message": response_message, "total_tokens": tokens_consumed}
+
+    async def get_models_list(self):
+        return self.model_list
