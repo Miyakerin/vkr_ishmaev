@@ -240,6 +240,7 @@ class AIService(BaseService):
                     "role": self.models_settings[company_name]["roles"]["system"],
                     "content": self.default_system_prompts[chat_history["chat_data"]["language"]],
                 })
+            print(previous_messages[0])
             previous_messages.append(
                 {
                     "role": self.models_settings[company_name]["roles"]["user"],

@@ -58,6 +58,7 @@ class AuthDependency:
 
     def __init__(self, public_jwk: RSAKey):
         self.public_jwk = public_jwk
+        print(self.public_jwk)
         pass
 
     async def __call__(self, token: str = Security(token_header)) -> User:

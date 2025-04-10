@@ -7,10 +7,12 @@ from starlette.responses import Response
 from services.ai_service.core.dependencies import CustomAuthDependency
 from services.ai_service.core.schemas.chat_dto import ChatCreateUpdate, ChatRead, MessageDataCreateUpdate, ChatsRead
 from services.ai_service.core.services.ai_service import AIService
+from services.ai_service.core.services.token_service import TokenService
 from services.ai_service.core.settings import settings
 from shared.db import Database
 from shared.db.s3 import S3Database
 from shared.dependencies import DbDependency, User, S3Dependency
+from shared.exceptions import CustomException
 
 chat_router = APIRouter(prefix="/chat", tags=["chats"])
 db_dependency = DbDependency(engines_params=settings.all_db)
@@ -68,10 +70,15 @@ async def new_message(
         s3: S3Database = Depends(s3_dependency),
         current_user: User = Depends(auth_dependency)
 ) -> Response:
-    return await (
+    token_service = TokenService(db=db, current_user=current_user, s3=s3)
+    if (await token_service.get_user_balance()).balance <= 0:
+        raise CustomException(status_code=status.HTTP_402_PAYMENT_REQUIRED, detail="Not enough balance")
+    data = await (
         AIService(db=db, current_user=current_user, s3=s3)
         .create_new_message(
             chat_id=chat_id, value=body,
             company_name=company_name, model_name=model_name,
             system_message=body.system_message)
     )
+    await TokenService(db=db, current_user=current_user, s3=s3).remove_n_tokens(data["total_tokens"])
+    return data
