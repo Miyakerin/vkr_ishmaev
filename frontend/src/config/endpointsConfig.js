@@ -10,7 +10,10 @@ const endpointsConfig = {
 
     sendMessageEndpoint: 'api/ai/v1/chat/:chat_id/message',
 
-    modelsEndpoint: 'api/ai/v1/models'
+    modelsEndpoint: 'api/ai/v1/models',
+
+    getTokensEndpoint: 'api/ai/v1/tokens',
+    addTokensEndpoint: 'api/ai/v1/tokens'
 };
 
 export default endpointsConfig;

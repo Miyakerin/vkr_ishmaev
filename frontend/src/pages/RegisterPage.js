@@ -124,11 +124,7 @@ const RegisterPage = () => {
                 duration: 5000,
                 isClosable: true,
             });
-
-            // Сохраняем токен и перенаправляем
-            localStorage.setItem('access_token', response.data.access_token);
-            axios.defaults.headers.common['Authorization'] = `Bearer ${response.data.access_token}`;
-            navigate('/chats');
+            navigate('/login');
 
         } catch (error) {
             let errorMessage = 'Ошибка регистрации';

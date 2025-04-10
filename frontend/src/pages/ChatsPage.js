@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useRef  } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
     Flex,
@@ -19,7 +19,20 @@ import {
     Tooltip,
     Textarea,
     FormControl,
-    FormLabel
+    FormLabel,
+    Modal,
+    ModalOverlay,
+    ModalContent,
+    ModalHeader,
+    ModalFooter,
+    ModalBody,
+    ModalCloseButton,
+    NumberInput,
+    NumberInputField,
+    NumberInputStepper,
+    NumberIncrementStepper,
+    NumberDecrementStepper,
+    useDisclosure
 } from '@chakra-ui/react';
 import {ArrowForwardIcon, AddIcon, SettingsIcon} from '@chakra-ui/icons';
 import api from '../api';
@@ -33,14 +46,77 @@ const ChatsPage = () => {
     const [newMessage, setNewMessage] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const [isSending, setIsSending] = useState(false);
-    const [selectedModel, setSelectedModel] = useState(1);
+    const [selectedModel, setSelectedModel] = useState(0);
     const [showModelSelector, setShowModelSelector] = useState(false);
     const [newChatLanguage, setNewChatLanguage] = useState('ru');
     const [systemMessage, setSystemMessage] = useState('Ты чат-бот помощник, который все силы прилагает, чтобы решить вопрос пользователя, ты отвечаешь кратко');
     const [showAdvancedSettings, setShowAdvancedSettings] = useState(false);
+    const {
+        isOpen: isTokenModalOpen,
+        onOpen: onTokenModalOpen,
+        onClose: onTokenModalClose
+    } = useDisclosure();
+    const topUpInputRef = useRef();
+    const {
+        isOpen: isTopUpModalOpen,
+        onOpen: onTopUpModalOpen,
+        onClose: onTopUpModalClose
+    } = useDisclosure();
+    const [topUpAmount, setTopUpAmount] = useState(10000);
+    const [tokenBalance, setTokenBalance] = useState(0);
     const navigate = useNavigate();
     const toast = useToast();
+    const [isProcessing, setIsProcessing] = useState(false);
 
+    const handleTopUp = async (amount) => {
+        if (topUpAmount <= 0) {
+            toast({
+                title: 'Ошибка',
+                description: 'Введите положительное число',
+                status: 'error',
+                duration: 2000,
+                isClosable: true,
+            });
+            return;
+        }
+
+        setIsProcessing(true);
+        try {
+            // Вызов API для пополнения баланса
+            const response = await api.post(endpointsConfig.addTokensEndpoint, {
+                amount: amount
+            });
+
+            // Обновляем баланс из ответа сервера
+            setTokenBalance(response.data.balance);
+            setTopUpAmount(amount);
+
+            toast({
+                title: 'Успешно',
+                description: `Баланс пополнен на ${amount} токенов`,
+                status: 'success',
+                duration: 2000,
+                isClosable: true,
+            });
+
+            onTopUpModalClose();
+        } catch (error) {
+            console.error('Ошибка при пополнении:', error);
+            toast({
+                title: 'Ошибка',
+                description: error.response?.data?.message || 'Не удалось пополнить баланс',
+                status: 'error',
+                duration: 3000,
+                isClosable: true,
+            });
+        } finally {
+            setIsProcessing(false);
+        }
+    };
+
+    useEffect( () => {
+        fetchTokens();
+    }, []);
 
     useEffect( () => {
         fetchModels();
@@ -56,6 +132,18 @@ const ChatsPage = () => {
             fetchMessages(selectedChat);
         }
     }, [selectedChat]);
+
+    const fetchTokens = async () => {
+        setIsLoading(true);
+        try {
+            const response = await api.get(endpointsConfig.getTokensEndpoint);
+            setTokenBalance(response.data.balance)
+        } catch (error) {
+            handleApiError(error, 'Failed to load balance');
+        } finally {
+            setIsLoading(false);
+        }
+    };
 
     const renderModelSelector = () => (
         <Box
@@ -151,13 +239,20 @@ const ChatsPage = () => {
                     )}
                 </Heading>
                 <Flex align="center">
-                    {chatHistory?.messages?.length > 0 && (
-                        <Badge colorScheme="green" mr="2">
-                            Tokens: {chatHistory.messages.reduce((acc, msg) => {
-                            return acc + (msg.total_tokens || 0);
-                        }, 0)}
+                    <Tooltip label="Токены доступные для использования">
+                        <Badge
+                            colorScheme="purple"
+                            mr="2"
+                            cursor="pointer"
+                            onClick={onTokenModalOpen}
+                            _hover={{ bg: 'purple.600' }}
+                            transition="background 0.2s"
+                            px={3}
+                            py={1}
+                        >
+                            {tokenBalance} токенов
                         </Badge>
-                    )}
+                    </Tooltip>
                     <Tooltip label="Настройки модели">
                         <IconButton
                             icon={<SettingsIcon />}
@@ -167,11 +262,13 @@ const ChatsPage = () => {
                         />
                     </Tooltip>
                     <Badge colorScheme="purple" ml="2">
-                        {models.find(m => m.id === selectedModel)?.name || 'Model'}
+                        {models.find(({id}) => id === selectedModel)?.model_name || 'Model'}
                     </Badge>
                 </Flex>
             </Flex>
             {showModelSelector && renderModelSelector()}
+            <TokenModal/>
+            <TopUpModal />
         </Box>
     );
 
@@ -262,6 +359,95 @@ const ChatsPage = () => {
         }
     };
 
+    const TokenModal = () => (
+        <Modal isOpen={isTokenModalOpen} onClose={onTokenModalClose}>
+            <ModalOverlay />
+            <ModalContent>
+                <ModalHeader>Управление токенами</ModalHeader>
+                <ModalCloseButton />
+                <ModalBody>
+                    <Flex direction="column" align="center" py={4}>
+                        <Text fontSize="2xl" fontWeight="bold">
+                            {tokenBalance} токенов
+                        </Text>
+                        <Text color="gray.500" mt={2}>
+                            Доступно для использования
+                        </Text>
+                    </Flex>
+                </ModalBody>
+                <ModalFooter>
+                    <Button
+                        colorScheme="blue"
+                        mr={3}
+                        onClick={() => {
+                            onTokenModalClose();
+                            onTopUpModalOpen();
+                        }}
+                    >
+                        Пополнить баланс
+                    </Button>
+                    <Button variant="ghost" onClick={onTokenModalClose}>
+                        Закрыть
+                    </Button>
+                </ModalFooter>
+            </ModalContent>
+        </Modal>
+    );
+
+    const TopUpModal = () => {
+        const [inputValue, setInputValue] = useState(topUpAmount);
+
+        const handleApply = () => {
+            const currentValue = parseInt(inputValue) || 0;
+            handleTopUp(currentValue);
+        };
+
+        return (
+            <Modal isOpen={isTopUpModalOpen} onClose={onTopUpModalClose}>
+                <ModalOverlay />
+                <ModalContent>
+                    <ModalHeader>Пополнение баланса</ModalHeader>
+                    <ModalCloseButton />
+                    <ModalBody>
+                        <FormControl>
+                            <FormLabel>Сумма пополнения</FormLabel>
+                            <NumberInput
+                                min={1}
+                                defaultValue={topUpAmount}
+                                onChange={(valueString) => setInputValue(valueString)}
+                                ref={topUpInputRef}
+                            >
+                                <NumberInputField />
+                                <NumberInputStepper>
+                                    <NumberIncrementStepper />
+                                    <NumberDecrementStepper />
+                                </NumberInputStepper>
+                            </NumberInput>
+                        </FormControl>
+                    </ModalBody>
+                    <ModalFooter>
+                        <Button
+                            colorScheme="blue"
+                            mr={3}
+                            onClick={handleApply}
+                            isLoading={isProcessing}
+                            loadingText="Обработка..."
+                        >
+                            Пополнить
+                        </Button>
+                        <Button
+                            variant="ghost"
+                            onClick={onTopUpModalClose}
+                            isDisabled={isProcessing}
+                        >
+                            Отмена
+                        </Button>
+                    </ModalFooter>
+                </ModalContent>
+            </Modal>
+        );
+    };
+
     const handleSendMessage = async () => {
         if (!newMessage.trim() || !selectedChat) return;
         const currentModel = models.find(model => model.id === selectedModel);
@@ -283,6 +469,7 @@ const ChatsPage = () => {
 
             // Обновляем историю сообщений
             await fetchMessages(selectedChat);
+            await fetchTokens();
 
             setNewMessage('');
             toast({
@@ -300,12 +487,12 @@ const ChatsPage = () => {
 
     const handleApiError = (error, defaultMessage) => {
         console.error(error);
-        const message = error.response?.data?.message || defaultMessage;
+        const message = error.response?.data?.detail || defaultMessage;
         toast({
             title: 'Error',
             description: message,
             status: 'error',
-            duration: 5000,
+            duration: 1000,
             isClosable: true,
         });
 

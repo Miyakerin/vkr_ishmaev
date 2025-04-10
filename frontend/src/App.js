@@ -1,6 +1,7 @@
 import LoginPage from "./pages/LoginPage";
 import RegisterPage from "./pages/RegisterPage";
 import ChatsPage  from "./pages/ChatsPage";
+import { Layout } from './components/Layout';
 
 
 
@@ -8,23 +9,24 @@ import React, { useEffect } from 'react';
 import {BrowserRouter as Router, Routes, Route, useNavigate, useLocation} from 'react-router-dom';
 import api from './api';
 import {ChakraProvider} from "@chakra-ui/react";
+import { Button, Flex, Box } from '@chakra-ui/react';
 import {QueryClient, QueryClientProvider} from "react-query";
 
-const AuthWrapper = ({ children }) => {
+
+export const AuthWrapper = ({ children }) => {
     const navigate = useNavigate();
     const location = useLocation();
 
     useEffect(() => {
         const token = localStorage.getItem('access_token');
-        if (!token && location.pathname !== '/register') {
+        const isAuthPage = ['/login', '/register'].includes(location.pathname);
+
+        if (!token && !isAuthPage) {
             navigate('/login');
-        } else {
-            api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-            if (location.pathname === '/login' || location.pathname === '/register') {
-                navigate('/chats')
-            }
+        } else if (token && isAuthPage) {
+            navigate('/chats');
         }
-    }, [navigate]);
+    }, [navigate, location.pathname]);
 
     return children;
 };
@@ -35,12 +37,15 @@ function App() {
             <ChakraProvider>
                     <Router>
                         <AuthWrapper>
-                            <Routes>
-                                <Route path="/login" element={<LoginPage />} />
-                                <Route path="/register" element={<RegisterPage />} />
-                                <Route path="/chats" element={<ChatsPage  />} />
-                                <Route path="*" element={<LoginPage />} /> {/* Дефолтный редирект */}
-                            </Routes>
+
+                                <Routes>
+                                    <Route path="/login" element={<LoginPage />} />
+                                    <Route path="/register" element={<RegisterPage />} />
+                                    <Route element={<Layout />}>
+                                        <Route path="/chats" element={<ChatsPage  />} />
+                                    </Route>
+                                    <Route path="*" element={<LoginPage />} /> {/* Дефолтный редирект */}
+                                </Routes>
                         </AuthWrapper>
                     </Router>
             </ChakraProvider>
