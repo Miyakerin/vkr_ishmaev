@@ -3,7 +3,7 @@ from starlette import status
 from starlette.responses import Response
 
 from services.auth_service.core.schemas.jwk import JWTToken
-from services.auth_service.core.schemas.user_dtos import UserCreateUpdate, UserRead
+from services.auth_service.core.schemas.user_dtos import UserCreateUpdate, UserRead, ForgetDTO
 from services.auth_service.core.services.jwt_service import JWTService
 from services.auth_service.core.services.user_service import UserService
 from services.auth_service.core.settings import settings
@@ -49,6 +49,30 @@ async def register(
             from_attributes=True
         ).model_dump_json(),
         headers={"content-type": "application/json"}
+    )
+
+
+@user_router.post("/forget", response_model=None, status_code=status.HTTP_204_NO_CONTENT)
+async def forget(
+        body: ForgetDTO,
+        db: Database = Depends(db_dependency)
+) -> Response:
+    await UserService(db=db).send_restore_code(username=body.username)
+    return Response(
+        status_code=status.HTTP_204_NO_CONTENT
+    )
+
+
+@user_router.post("/verify_restore_code", response_model=None, status_code=status.HTTP_204_NO_CONTENT)
+async def forget(
+        body: ForgetDTO,
+        db: Database = Depends(db_dependency)
+) -> Response:
+    if not body.username or not body.code:
+        raise CustomException(status_code=422, detail="Username or Code is invalid")
+    await UserService(db=db).restore_password(username=body.username, code=body.code)
+    return Response(
+        status_code=status.HTTP_204_NO_CONTENT
     )
 
 

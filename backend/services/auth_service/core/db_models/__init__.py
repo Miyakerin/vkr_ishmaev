@@ -52,3 +52,14 @@ class UserXProfilePicture(MyBase):
                                                        default=datetime.now())
     delete_timestamp: Mapped[datetime] = mapped_column("delete_timestamp", DateTime(timezone=False), nullable=True,
                                                        default=None)
+
+
+class UserCode(MyBase):
+    __tablename__ = 'user_code'
+    user_code_id: Mapped[int] = mapped_column("user_code_id", Integer, primary_key=True, nullable=False)
+    user_id: Mapped[int] = mapped_column("user_id", ForeignKey(User.user_id), nullable=False)
+    code: Mapped[Annotated[str, 16]] = mapped_column("code", String(1024), nullable=False)
+    attempt_number: Mapped[int] = mapped_column("attempt_number", Integer, nullable=False)
+    create_timestamp: Mapped[datetime] = mapped_column("create_timestamp", DateTime(timezone=False), nullable=False,
+                                                       default=datetime.now())
+    delete_timestamp: Mapped[datetime] = mapped_column("delete_timestamp", DateTime(timezone=False), nullable=True, default=None)

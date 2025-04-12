@@ -4,6 +4,11 @@ from typing import Optional
 from services.auth_service.core.schemas import BaseDTO
 
 
+class ForgetDTO(BaseDTO):
+    username: str
+    code: Optional[str] = None
+
+
 class UserCreateUpdate(BaseDTO):
     username: Optional[str] = None
     password: str

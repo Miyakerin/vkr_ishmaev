@@ -40,6 +40,14 @@ class ServiceSettings(BaseSettings):
     port_host: int
 
 
+class EmailSettings(BaseSettings):
+    model_config = SettingsConfigDict(env_prefix="AUTH_EMAIL_", extra="ignore")
+    email: str
+    password: str
+    host: str
+    port: int
+
+
 class MinioSetting(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="AUTH_MINIO_", extra="ignore")
     ROOT_USER: str
@@ -82,6 +90,7 @@ class Settings(BaseSettings):
     minio_settings: MinioSetting = MinioSetting()
     service_settings: ServiceSettings = ServiceSettings()
     jwt_settings: JwtSettings = JwtSettings()
+    email_settings: EmailSettings = EmailSettings()
     all_db: tp.List[tp.Dict[str, tp.Union[str, int, bool]]] = [
         {
             "name": auth_db_settings.name,
