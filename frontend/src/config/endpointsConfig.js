@@ -5,6 +5,8 @@ const endpointsConfig = {
     verifyEndpoint: '/api/auth/v1/user/verify',
     verifyEmailEndpoint: '/api/auth/v1/user/verify_email',
     resendEmailEndpoint: '/api/auth/v1/user/email_code',
+    forgotPasswordEndpoint: '/api/auth/v1/user/forget_password',
+    restorePasswordEndpoint: '/api/auth/v1/user/restore_password',
 
     getUserChatsEndpoint: '/api/ai/v1/chat',
     createChatEndpoint: '/api/ai/v1/chat',
