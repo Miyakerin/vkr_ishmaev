@@ -37,6 +37,7 @@ class User(MyBase):
     email: Mapped[EmailStr] = mapped_column("email", String(64), nullable=False)
     password: Mapped[Annotated[str, 256]] = mapped_column("password", String(256), nullable=False)
     is_admin: Mapped[bool] = mapped_column("is_admin", Boolean, nullable=False, default=False)
+    is_verified: Mapped[bool] = mapped_column("is_verified", Boolean, default=False)
     create_timestamp: Mapped[datetime] = mapped_column("create_timestamp", DateTime(timezone=False), nullable=False, default=datetime.now())
     delete_timestamp: Mapped[datetime] = mapped_column("delete_timestamp", DateTime(timezone=False), nullable=True, default=None)
 
@@ -60,6 +61,7 @@ class UserCode(MyBase):
     user_id: Mapped[int] = mapped_column("user_id", ForeignKey(User.user_id), nullable=False)
     code: Mapped[Annotated[str, 16]] = mapped_column("code", String(1024), nullable=False)
     attempt_number: Mapped[int] = mapped_column("attempt_number", Integer, nullable=False)
+    code_type: Mapped[str] = mapped_column("code_type", String(16), nullable=False)
     create_timestamp: Mapped[datetime] = mapped_column("create_timestamp", DateTime(timezone=False), nullable=False,
                                                        default=datetime.now())
     delete_timestamp: Mapped[datetime] = mapped_column("delete_timestamp", DateTime(timezone=False), nullable=True, default=None)

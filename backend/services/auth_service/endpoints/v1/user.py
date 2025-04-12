@@ -52,25 +52,38 @@ async def register(
     )
 
 
-@user_router.post("/forget", response_model=None, status_code=status.HTTP_204_NO_CONTENT)
+@user_router.post("/forget_password", response_model=None, status_code=status.HTTP_204_NO_CONTENT)
 async def forget(
         body: ForgetDTO,
         db: Database = Depends(db_dependency)
 ) -> Response:
-    await UserService(db=db).send_restore_code(username=body.username)
+    await UserService(db=db).send_restore_code(username=body.username, code_type=UserService.password_code_type)
     return Response(
         status_code=status.HTTP_204_NO_CONTENT
     )
 
 
-@user_router.post("/verify_restore_code", response_model=None, status_code=status.HTTP_204_NO_CONTENT)
-async def forget(
+@user_router.post("/restore_password", response_model=None, status_code=status.HTTP_204_NO_CONTENT)
+async def restore_password(
         body: ForgetDTO,
         db: Database = Depends(db_dependency)
 ) -> Response:
     if not body.username or not body.code:
         raise CustomException(status_code=422, detail="Username or Code is invalid")
     await UserService(db=db).restore_password(username=body.username, code=body.code)
+    return Response(
+        status_code=status.HTTP_204_NO_CONTENT
+    )
+
+
+@user_router.post("/verify_email", response_model=None, status_code=status.HTTP_204_NO_CONTENT)
+async def verify_email(
+        body: ForgetDTO,
+        db: Database = Depends(db_dependency)
+) -> Response:
+    if not body.username or not body.code:
+        raise CustomException(status_code=422, detail="Username or Code is invalid")
+    await UserService(db=db).verify_email(username=body.username, code=body.code)
     return Response(
         status_code=status.HTTP_204_NO_CONTENT
     )

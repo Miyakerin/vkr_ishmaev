@@ -4,7 +4,7 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncEngine
 
 from shared.db.sql_database import Database
-from ..db_models import MyBase, UserXProfilePicture
+from ..db_models import MyBase, UserXProfilePicture, UserCode, User
 from ..settings import settings
 
 
@@ -37,5 +37,34 @@ async def raw_sql_scripts_init(engine: AsyncEngine):
         query = f"""CREATE OR REPLACE TRIGGER {function_name} BEFORE INSERT OR UPDATE ON {table_name}
                                 FOR EACH ROW EXECUTE FUNCTION {function_name}();
                             """
+        await conn.execute(text(query))
+
+        table_name = UserCode.__tablename__
+        function_name = f"trigger_on_{table_name}"
+        query = f"""
+                    CREATE OR REPLACE FUNCTION {function_name}() RETURNS TRIGGER AS ${function_name}$
+                        BEGIN
+                            IF (NEW.attempt_number > 5) THEN
+                                NEW.delete_timestamp = NOW();
+                            END IF;
+
+                            RETURN NEW;
+                        END;
+                    ${function_name}$ LANGUAGE plpgsql;
+                """
+        await conn.execute(text(query))
+        query = f"""CREATE OR REPLACE TRIGGER {function_name} BEFORE INSERT OR UPDATE ON {table_name}
+                                        FOR EACH ROW EXECUTE FUNCTION {function_name}();
+                                    """
+        await conn.execute(text(query))
+
+        table_name = User.__tablename__
+        query = f"""
+            CREATE UNIQUE INDEX IF NOT EXISTS unique_email_{table_name} ON {table_name} (email) WHERE delete_timestamp IS NULL;
+        """
+        await conn.execute(text(query))
+        query = f"""
+            CREATE UNIQUE INDEX IF NOT EXISTS unique_username_{table_name} ON {table_name} (username) WHERE delete_timestamp IS NULL;
+        """
         await conn.execute(text(query))
 

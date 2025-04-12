@@ -20,6 +20,8 @@ from shared.utils.email import send_email
 class UserService(BaseService):
 
     max_attempts = 5
+    email_code_type = "email"
+    password_code_type = "password"
 
     def __init__(self, db: db_.Database = None, current_user: dep.User = None):
         super(UserService, self).__init__(db=db, current_user=current_user)
@@ -45,17 +47,19 @@ class UserService(BaseService):
             .values(
                 username=username,
                 email=email,
-                password=bcrypt.hashpw(password.encode("UTF-8"), bcrypt.gensalt(12)).decode("UTF-8")
+                password=bcrypt.hashpw(password.encode("UTF-8"), bcrypt.gensalt(12)).decode("UTF-8"),
+                is_verified=False
             )
             .returning(User)
         )
         result = await (await self.db.sessions)[settings.auth_db_settings.name].execute(stmt)
         result = result.mappings().one_or_none()
         if result:
+            await self.send_restore_code(user=result["User"], username=username, code_type=self.email_code_type)
             return result["User"]
         raise ex.CustomException(status_code=400, detail="Error while creating user")
 
-    async def patch_user(self, user_id: int, username: str = None, email: str = None, password: str = None, is_admin: bool = None) -> User:
+    async def patch_user(self, user_id: int, username: str = None, email: str = None, password: str = None, is_verified: bool = None, is_admin: bool = None) -> User:
         values = {}
         if username is not None:
             username = username.strip().lower()
@@ -69,6 +73,8 @@ class UserService(BaseService):
             values["password"] = password
         if is_admin is not None:
             values["is_admin"] = is_admin
+        if is_verified is not None:
+            values["is_verified"] = is_verified
         stmt = (
             update(User)
             .values(values)
@@ -85,6 +91,7 @@ class UserService(BaseService):
             username: Optional[str] = None,
             email: Optional[str] = None,
             existing: Optional[bool] = True,
+            is_verified: Optional[bool] = True,
             user_ids: Optional[Union[List[int], int]] = None
     ) -> List[User]:
         stmt = select(User)
@@ -97,6 +104,10 @@ class UserService(BaseService):
             stmt = stmt.where(sqlalchemy.func.lower(User.username) == username.lower())
         if email:
             stmt = stmt.where(sqlalchemy.func.lower(User.email) == email.lower())
+        if is_verified is True:
+            stmt = stmt.where(User.is_verified == True)
+        elif is_verified is False:
+            stmt = stmt.where(User.is_verified == False)
         if existing is True:
             stmt = stmt.where(User.delete_timestamp == None)
         elif existing is False:
@@ -112,16 +123,16 @@ class UserService(BaseService):
             return result[0]
         raise ex.CustomException(status_code=400, detail="User does not exist")
 
-    async def get_user_by_email(self, email: str) -> User:
+    async def get_user_by_email(self, email: str, is_verified: bool = True) -> User:
         email = email.strip().lower()
-        result = await self.get_users(email=email)
+        result = await self.get_users(email=email, is_verified=is_verified)
         if result:
             return result[0]
         raise ex.CustomException(status_code=400, detail="User does not exist")
 
-    async def get_user_by_username(self, username: str) -> User:
+    async def get_user_by_username(self, username: str, is_verified: bool = True) -> User:
         username = username.strip().lower()
-        result = await self.get_users(username=username)
+        result = await self.get_users(username=username, is_verified=is_verified)
         if result:
             return result[0]
         raise ex.CustomException(status_code=400, detail="User does not exist")
@@ -129,9 +140,9 @@ class UserService(BaseService):
     async def login_user(self, username: str, password: str, email: str) -> User:
         if username is None and email is None:
             raise ex.CustomException(status_code=400, detail="Username or email is required")
-        username = username.strip().lower()
+        username = username.strip().lower() if username else None
         password = password.strip()
-        email = email.strip().lower()
+        email = email.strip().lower() if email else None
         if username:
             stmt = (
                 select(User)
@@ -143,54 +154,30 @@ class UserService(BaseService):
             stmt = (
                 select(User)
                 .where(
-                    sqlalchemy.func.lower(User.email) == email.lower()
+                    (sqlalchemy.func.lower(User.email) == email.lower())
                 )
             )
         else:
             raise ex.CustomException(status_code=400, detail="Invalid credentials")
+        stmt = stmt.where((User.delete_timestamp == None) & (User.is_verified == True))
         result = await (await self.db.sessions)[settings.auth_db_settings.name].execute(stmt)
         result = result.mappings().one_or_none()
         if not result:
-            raise ex.CustomException(status_code=404, detail="User does not exist")
+            raise ex.CustomException(status_code=404, detail="User does not exist or not verified email")
         result = result["User"]
         if bcrypt.checkpw(password.encode("UTF-8"), result.password.encode("UTF-8")):
             return result
         raise ex.CustomException(status_code=401, detail="Invalid credentials")
 
-    async def send_restore_code(self, username) -> None:
-        user = await self.get_user_by_username(username)
-        code_db, code_str = await self.generate_restore_code(user_id=user.user_id)
-        html_attachment = f"""
-            Ваш код восстановления пароля - {code_str}
-        """
-        html_attachment = MIMEText(html_attachment, "html")
-        await send_email(
-            from_addr=settings.email_settings.email,
-            password=settings.email_settings.password,
-            to=user.email, subject="Password Restore", attachments=[html_attachment],
-            host=settings.email_settings.host, host_port=settings.email_settings.port
-        )
-        return None
-
-    async def restore_password(self, username: str, code: str) -> None:
-        current_user = await self.get_user_by_username(username=username)
-        current_code = await self.get_current_restore_code(user_id=current_user.user_id)
+    async def verify_email(self, username: str, code: str) -> None:
+        current_user = await self.get_user_by_username(username=username, is_verified=False)
+        current_code = await self.get_current_restore_code(user_id=current_user.user_id,
+                                                           code_type=self.email_code_type)
         if not current_code:
             raise ex.CustomException(status_code=400, detail="Invalid code")
         if bcrypt.checkpw(code.encode("UTF-8"), current_code.code.encode("UTF-8")):
-            new_password = ''.join(random.SystemRandom().choice(string.ascii_uppercase + string.digits + string.ascii_lowercase) for _ in range(16))
-            await self.patch_user(user_id=current_user.user_id, password=new_password)
-            html_attachment = f"""
-                        Ваш код восстановления пароля - {new_password}
-                    """
-            html_attachment = MIMEText(html_attachment, "html")
-            await send_email(
-                from_addr=settings.email_settings.email,
-                password=settings.email_settings.password,
-                to=current_user.email, subject="Password Restore", attachments=[html_attachment],
-                host=settings.email_settings.host, host_port=settings.email_settings.port
-            )
-            await self.delete_restore_codes(user_id=current_user.user_id)
+            await self.patch_user(user_id=current_user.user_id, is_verified=True)
+            await self.delete_restore_codes(user_id=current_user.user_id, code_type=self.email_code_type)
         else:
             delete_timestamp = None if current_code.attempt_number + 1 > 5 else None
             attempt_number = current_code.attempt_number + 1
@@ -204,12 +191,74 @@ class UserService(BaseService):
             raise ex.CustomException(status_code=400, detail="Invalid code")
         return None
 
-    async def get_current_restore_code(self, user_id: int) -> Optional[UserCode]:
+    async def send_restore_code(self, username, code_type, user: Optional[User] = None) -> None:
+        if code_type != self.email_code_type and code_type != self.password_code_type:
+            raise ex.CustomException(status_code=400, detail="Invalid code type")
+        if not user:
+            user = await self.get_user_by_username(username)
+        else:
+            username = user.username
+        code_db, code_str = await self.generate_restore_code(user_id=user.user_id, code_type=code_type)
+        if code_type == self.password_code_type:
+            html_attachment = f"""
+                Ваш код восстановления пароля - {code_str}
+            """
+            subject = "Password restore"
+        elif code_type == self.email_code_type:
+            html_attachment = f"""
+                Ваш код подтверждения почты - {code_str}
+            """
+            subject = "Email verification"
+        html_attachment = MIMEText(html_attachment, "html")
+        await send_email(
+            from_addr=settings.email_settings.email,
+            password=settings.email_settings.password,
+            to=user.email, subject=subject, attachments=[html_attachment],
+            host=settings.email_settings.host, host_port=settings.email_settings.port
+        )
+        return None
+
+    async def restore_password(self, username: str, code: str) -> None:
+        current_user = await self.get_user_by_username(username=username)
+        current_code = await self.get_current_restore_code(user_id=current_user.user_id, code_type=self.password_code_type)
+        if not current_code:
+            raise ex.CustomException(status_code=400, detail="Invalid code")
+        if bcrypt.checkpw(code.encode("UTF-8"), current_code.code.encode("UTF-8")):
+            new_password = ''.join(random.SystemRandom().choice(string.ascii_uppercase + string.digits + string.ascii_lowercase) for _ in range(16))
+            await self.patch_user(user_id=current_user.user_id, password=new_password)
+            html_attachment = f"""
+                        Ваш пароль - {new_password}
+                    """
+            html_attachment = MIMEText(html_attachment, "html")
+            await send_email(
+                from_addr=settings.email_settings.email,
+                password=settings.email_settings.password,
+                to=current_user.email, subject="Password Restore", attachments=[html_attachment],
+                host=settings.email_settings.host, host_port=settings.email_settings.port
+            )
+            await self.delete_restore_codes(user_id=current_user.user_id, code_type=self.password_code_type)
+        else:
+            delete_timestamp = None if current_code.attempt_number + 1 > 5 else None
+            attempt_number = current_code.attempt_number + 1
+            stmt = (
+                update(UserCode)
+                .values(attempt_number=attempt_number, delete_timestamp=delete_timestamp)
+                .where(UserCode.user_code_id == current_code.user_code_id)
+            )
+            await (await self.db.sessions)[settings.auth_db_settings.name].execute(stmt)
+            await (await self.db.sessions)[settings.auth_db_settings.name].commit()
+            raise ex.CustomException(status_code=400, detail="Invalid code")
+        return None
+
+    async def get_current_restore_code(self, user_id: int, code_type: str) -> Optional[UserCode]:
+        if code_type != self.password_code_type and code_type != self.email_code_type:
+            raise ex.CustomException(status_code=400, detail="Invalid code type")
         stmt = (
             select(UserCode)
             .where(
                 (UserCode.user_id == user_id)
                 & (UserCode.attempt_number < self.max_attempts)
+                & (UserCode.code_type == code_type)
                 & (UserCode.delete_timestamp == None)
                 & (UserCode.create_timestamp + datetime.timedelta(minutes=30) > datetime.datetime.now())
             )
@@ -220,20 +269,23 @@ class UserService(BaseService):
             return None
         return results[0]["UserCode"]
 
-    async def delete_restore_codes(self, user_id: int) -> None:
+    async def delete_restore_codes(self, user_id: int, code_type: str) -> None:
+        if code_type != self.password_code_type and code_type != self.email_code_type:
+            raise ex.CustomException(status_code=400, detail="Invalid code type")
         stmt = (
             update(UserCode)
             .values(delete_timestamp=datetime.datetime.now())
             .where(
                 (UserCode.user_id == user_id)
                 & (UserCode.delete_timestamp == None)
+                & (UserCode.code_type == code_type)
             )
         )
         await (await self.db.sessions)[settings.auth_db_settings.name].execute(stmt)
         return None
 
-    async def generate_restore_code(self, user_id) -> tuple[UserCode, str]:
-        await self.delete_restore_codes(user_id=user_id)
+    async def generate_restore_code(self, user_id: int, code_type: str) -> tuple[UserCode, str]:
+        await self.delete_restore_codes(user_id=user_id, code_type=code_type)
         code = ''.join(random.SystemRandom().choice(string.ascii_uppercase + string.digits) for _ in range(8))
         stmt = (
             insert(UserCode)
@@ -242,6 +294,7 @@ class UserService(BaseService):
                 attempt_number=0,
                 create_timestamp=datetime.datetime.now(),
                 delete_timestamp=None,
+                code_type=code_type,
                 code=bcrypt.hashpw(code.encode("UTF-8"), bcrypt.gensalt(12)).decode("UTF-8")
             )
             .returning(UserCode)
