@@ -43,9 +43,9 @@ function App() {
 
                                     <Route path="/login" element={<LoginPage />} />
                                     <Route path="/register" element={<RegisterPage />} />
-
+                                    <Route element={<Layout />}>
                                         <Route path="/chats" element={<ChatsPage />} />
-
+                                    </Route>
 
                                     <Route path="*" element={<LoginPage />} />
                                 </Routes>

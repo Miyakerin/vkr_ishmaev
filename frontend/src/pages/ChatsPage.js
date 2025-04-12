@@ -509,7 +509,6 @@ const ChatsPage = () => {
     };
 
     return (
-        <Layout>
         <Flex h="100vh" bg="gray.50">
             {/* Sidebar */}
             <Box w="300px" borderRight="1px" borderColor="gray.200" bg="white">
@@ -620,7 +619,6 @@ const ChatsPage = () => {
                 )}
             </Box>
         </Flex>
-        </Layout>
     );
 };
 

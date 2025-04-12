@@ -1,6 +1,6 @@
 // В файле Layout.js
 import { Flex, Box, Button, Icon, useColorMode, useColorModeValue } from '@chakra-ui/react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import {useNavigate, useLocation, Outlet} from 'react-router-dom';
 import { FiLogOut } from 'react-icons/fi';
 
 export const Layout = ({ children }) => {
@@ -54,7 +54,7 @@ export const Layout = ({ children }) => {
                 height="calc(100% - 48px)"  // Учитываем новую высоту шапки
                 overflow="auto"
             >
-                {children}
+                <Outlet />
             </Box>
         </Box>
     );
