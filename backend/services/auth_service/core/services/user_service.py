@@ -191,11 +191,11 @@ class UserService(BaseService):
             raise ex.CustomException(status_code=400, detail="Invalid code")
         return None
 
-    async def send_restore_code(self, username, code_type, user: Optional[User] = None) -> None:
+    async def send_restore_code(self, username, code_type, user: Optional[User] = None, is_verified: Optional[bool] = True) -> None:
         if code_type != self.email_code_type and code_type != self.password_code_type:
             raise ex.CustomException(status_code=400, detail="Invalid code type")
         if not user:
-            user = await self.get_user_by_username(username)
+            user = await self.get_user_by_username(username, is_verified)
         else:
             username = user.username
         code_db, code_str = await self.generate_restore_code(user_id=user.user_id, code_type=code_type)
@@ -286,7 +286,7 @@ class UserService(BaseService):
 
     async def generate_restore_code(self, user_id: int, code_type: str) -> tuple[UserCode, str]:
         await self.delete_restore_codes(user_id=user_id, code_type=code_type)
-        code = ''.join(random.SystemRandom().choice(string.ascii_uppercase + string.digits) for _ in range(8))
+        code = ''.join(random.SystemRandom().choice(string.ascii_uppercase + string.digits) for _ in range(6))
         stmt = (
             insert(UserCode)
             .values(

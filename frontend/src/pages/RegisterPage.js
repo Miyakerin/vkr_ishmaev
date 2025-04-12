@@ -14,6 +14,12 @@ import {
     FormErrorMessage,
     InputGroup,
     InputRightElement,
+    Modal,
+    ModalOverlay,
+    ModalContent,
+    ModalHeader,
+    ModalBody,
+    ModalFooter,
     useToast,
 } from '@chakra-ui/react';
 import { ViewIcon, ViewOffIcon } from '@chakra-ui/icons';
@@ -43,6 +49,8 @@ const RegisterPage = () => {
     const [showPassword, setShowPassword] = useState(false);
     const [showConfirmPassword, setShowConfirmPassword] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [verificationCode, setVerificationCode] = useState('');
+    const [isVerificationModalOpen, setIsVerificationModalOpen] = useState(false);
 
     // Валидация email
     const validateEmail = (email) => {
@@ -116,6 +124,8 @@ const RegisterPage = () => {
                 username: formData.username
             });
 
+            setIsVerificationModalOpen(true);
+
             // Успешная регистрация
             toast({
                 title: 'Регистрация успешна',
@@ -124,7 +134,6 @@ const RegisterPage = () => {
                 duration: 5000,
                 isClosable: true,
             });
-            navigate('/login');
 
         } catch (error) {
             let errorMessage = 'Ошибка регистрации';
@@ -146,6 +155,66 @@ const RegisterPage = () => {
             });
         } finally {
             setIsSubmitting(false);
+        }
+    };
+
+    const handleVerify = async () => {
+        try {
+            const response = await api.post(
+                endpointsConfig.verifyEmailEndpoint,
+                {
+                    username: formData.username,
+                    code: verificationCode
+                }
+            );
+
+
+            toast({
+                title: 'Email подтвержден',
+                description: 'Ваш аккаунт успешно активирован',
+                status: 'success',
+                duration: 5000,
+                isClosable: true,
+            });
+            setIsVerificationModalOpen(false);
+            navigate('/login');
+        } catch (error) {
+            toast({
+                title: 'Ошибка',
+                description: 'Неверный код подтверждения',
+                status: 'error',
+                duration: 5000,
+                isClosable: true,
+            });
+        }
+    }
+
+    const handleResendCode = async () => {
+        try {
+            const response = await api.post(
+                endpointsConfig.resendEmailEndpoint,
+                {
+                    username: formData.username
+                });
+
+
+            toast({
+                title: 'Код отправлен',
+                description: 'Новый код подтверждения отправлен на вашу почту',
+                status: 'success',
+                duration: 5000,
+                isClosable: true,
+            });
+
+        } catch (error) {
+            toast({
+                title: 'Ошибка сети',
+                description: 'Не удалось подключиться к серверу',
+                status: 'error',
+                duration: 5000,
+                isClosable: true,
+            });
+        } finally {
         }
     };
 
@@ -271,6 +340,41 @@ const RegisterPage = () => {
                         Зарегистрироваться
                     </Button>
                 </form>
+
+                <Modal isOpen={isVerificationModalOpen} onClose={() => setIsVerificationModalOpen(false)}>
+                    <ModalOverlay />
+                    <ModalContent>
+                        <ModalHeader>Подтвердите ваш email</ModalHeader>
+                        <ModalBody>
+                            <Text mb={4}>
+                                Мы отправили 6-значный код подтверждения на адрес {formData.email}.
+                                Введите его ниже:
+                            </Text>
+                            <Input
+                                placeholder="Введите код"
+                                value={verificationCode}
+                                onChange={(e) => setVerificationCode(e.target.value)}
+                                maxLength={6}
+                            />
+                        </ModalBody>
+                        <ModalFooter>
+                            <Button
+                                variant="ghost"
+                                onClick={handleResendCode}
+                                mr={3}
+                            >
+                                Отправить код повторно
+                            </Button>
+                            <Button
+                                colorScheme="blue"
+                                onClick={handleVerify}
+                                isDisabled={verificationCode.length !== 6}
+                            >
+                                Подтвердить
+                            </Button>
+                        </ModalFooter>
+                    </ModalContent>
+                </Modal>
 
                 <Text mt={4} color="gray.400">
                     Уже есть аккаунт?{' '}
